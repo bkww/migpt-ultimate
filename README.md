@@ -4,19 +4,40 @@
 
 本项目是基于 [MiGPT-Next](https://github.com/idootop/migpt-next) 修改而来的升级版本。
 
+## 一键部署（推荐）
+
+只需两步即可运行：
+
+```shell
+# 1. 克隆项目
+git clone https://github.com/zhuzhu88920/migpt-ultimate.git
+cd migpt-ultimate
+
+# 2. 启动服务
+docker-compose up -d
+```
+
+然后访问 **http://localhost:36592** 在 Web 界面上配置你的小米账号和 API Key 即可。
+
+### 管理命令
+
+```shell
+docker-compose logs -f    # 查看日志
+docker-compose down       # 停止服务
+docker-compose restart   # 重启服务
+```
+
 ## 功能特性
 
 - **插件系统**：支持自定义插件扩展，可根据关键词触发特定功能
 - **记忆系统**：内置对话记忆功能，AI 可记住之前的对话内容
-- **多端支持**：
-  - Web 界面：浏览器直接访问配置和控制
-  - CLI 命令行工具：终端快速启动
-- **灵活配置**：支持 YAML/JSON 配置文件
+- **Web 管理界面**：浏览器直接配置和控制
+- **CLI 命令行工具**：终端快速启动
 - **TTS 支持**：可配置 TTS Command 解决部分机型无声音问题
 
-## 快速开始
+## 本地开发
 
-### 使用 Web 界面
+### 使用 Node.js
 
 ```shell
 cd apps/web
@@ -33,10 +54,12 @@ pnpm start
 cd apps/cli
 pnpm install
 pnpm build
-migpt-ultimate start -c config/default.yaml
+migpt-ultimate start -c config.yaml
 ```
 
 ## 配置说明
+
+启动后可在 Web 界面上配置，或手动创建 `config/default.yaml`：
 
 ```yaml
 speaker:
@@ -52,63 +75,26 @@ prompt:
 callAIKeywords:
   - "请"
   - "你"
-memory:
-  enabled: false
-  maxRecords: 100
 ttsCommand:
   - 5
   - 1
 ```
 
-### 配置项说明
-
 | 配置项 | 说明 |
 |--------|------|
 | `speaker.userId` | 小米账号 ID（纯数字） |
 | `speaker.password` | 小米账号密码 |
-| `speaker.did` | 设备名称（如：小爱触屏音箱） |
+| `speaker.did` | 设备名称 |
 | `speaker.passToken` | 可选，遇到验证码时需要 |
-| `openai.model` | 使用的 AI 模型 |
-| `openai.baseURL` | API 地址 |
-| `openai.apiKey` | API 密钥 |
+| `openai.*` | AI 模型配置 |
 | `callAIKeywords` | 触发 AI 回复的关键词 |
-| `ttsCommand` | TTS 命令 [SIID, AIID]，解决部分机型无声音问题 |
-| `memory.enabled` | 是否启用记忆系统 |
-| `memory.maxRecords` | 最大记忆条数 |
-| `plugins` | 自定义插件列表 |
-
-### 插件系统
-
-插件需要在代码中定义，目前仅 CLI 支持。插件接口：
-
-```typescript
-interface Plugin {
-  name: string;
-  description: string;
-  keywords?: string[];  // 触发关键词，不设置则始终触发
-  execute(ctx: PluginContext): Promise<PluginResult | null>;
-}
-
-interface PluginContext {
-  text: string;
-  timestamp: number;
-}
-
-interface PluginResult {
-  text?: string;
-  handled?: boolean;
-}
-```
-
-### 记忆系统
-
-启用后，AI 会自动记住对话内容（CLI 版本）。
+| `ttsCommand` | TTS 命令 [SIID, AIID] |
 
 ## 常见问题
 
 ### Q：一直提示登录失败？
 
-一般是因为登录小米账号时触发了安全验证，请参考 [MiGPT-Next 教程](https://github.com/idootop/migpt-next/issues/4) 获取 PassToken。
+请参考 [MiGPT-Next 教程](https://github.com/idootop/migpt-next/issues/4) 获取 PassToken。
 
 ### Q：小爱同学总是抢话？
 
@@ -116,7 +102,7 @@ interface PluginResult {
 
 ### Q：控制台能看到 AI 回答，但没有声音？
 
-部分机型（如小爱音箱 Play 增强版）需要配置 `ttsCommand` 参数。请到 [miot-spec](https://home.miot-spec.com) 查询你设备的 SIID 和 AIID。
+部分机型需要配置 `ttsCommand` 参数。请到 [miot-spec](https://home.miot-spec.com) 查询。
 
 ## 项目结构
 
@@ -126,14 +112,17 @@ migpt-ultimate/
 │   ├── cli/          # 命令行工具
 │   └── web/          # Web 服务器
 ├── packages/
-│   └── core/         # 核心库（插件系统、记忆系统）
-└── config/           # 配置文件目录
+│   └── core/         # 核心库
+├── config/           # 配置文件
+├── docker-compose.yml
+└── Dockerfile.web
 ```
 
 ## 依赖
 
 - Node.js >= 18
 - pnpm
+- Docker & Docker Compose
 
 ## 免责声明
 
