@@ -271,6 +271,16 @@ interface WebConfig {
 }
 
 function loadConfig(configPath: string): WebConfig {
+  if (!existsSync(configPath)) {
+    const defaultConfig: WebConfig = {
+      speaker: { userId: '', password: '', did: '' },
+      openai: { model: 'gpt-4o-mini', baseURL: 'https://api.openai.com/v1', apiKey: '' },
+      prompt: { system: '你是一个智能助手小爱同学。' },
+      callAIKeywords: ['请', '你'],
+    };
+    writeFileSync(configPath, YAML.stringify(defaultConfig), 'utf-8');
+    return defaultConfig;
+  }
   const content = readFileSync(configPath, 'utf-8');
   return YAML.parse(content) as WebConfig;
 }
