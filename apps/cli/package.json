@@ -1,0 +1,23 @@
+{
+  "name": "@migpt-ultimate/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "migpt-ultimate": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@migpt-ultimate/core": "file:../../packages/core/migpt-ultimate-core-0.1.0.tgz",
+    "commander": "^12.1.0",
+    "yaml": "^2.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.2"
+  }
+}
