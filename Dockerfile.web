@@ -2,13 +2,22 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# 使用阿里云镜像（如果构建机器能访问的话）
-# RUN npm config set registry https://registry.npmmirror.com
+# 安装 pnpm
+RUN npm install -g pnpm
 
-COPY apps/web/package*.json ./
-COPY node_modules ./node_modules
-COPY apps/web/dist ./dist
+# 复制源码
+COPY package.json pnpm-workspace.yaml ./
+COPY apps/web/package*.json ./apps/web/
+COPY apps/web/tsconfig.json ./apps/web/
+COPY apps/web/src ./apps/web/src
+
+# 构建
+WORKDIR /app/apps/web
+RUN pnpm install && pnpm build
+
+# 返回根目录
+WORKDIR /app
 
 EXPOSE 36592
 
-CMD ["node", "dist/index.js"]
+CMD ["node", "apps/web/dist/index.js"]
