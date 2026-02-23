@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   migpt-ultimate:
-    build:
-      context: .
-      dockerfile: Dockerfile.web
+    image: zhuzhu88920/migpt-ultimate:latest
     ports:
       - "36592:36592"
     volumes:
@@ -12,3 +10,10 @@ services:
     environment:
       - NODE_ENV=production
     restart: unless-stopped
+
+# 使用说明：
+# 1. 创建配置目录: mkdir -p config
+# 2. 启动服务: docker-compose up -d
+# 3. 访问 http://localhost:36592 配置
+#
+# 如需自定义配置，可创建 config/default.yaml 文件
