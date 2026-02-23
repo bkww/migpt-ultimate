@@ -161,16 +161,19 @@ const HTML = `<!DOCTYPE html>
   <div id="modalOverlay" class="modal-overlay" onclick="closeModal(event)">
     <div class="modal" onclick="event.stopPropagation()">
       <h3>获取小米账号凭证</h3>
-      <p>请按以下步骤获取登录凭证：</p>
-      <ol>
-        <li>在手机上打开「小爱音箱」App</li>
-        <li>进入「我的」-「设置」-「登录设备」</li>
-        <li>点击需要使用的设备，记录设备名称 (did)</li>
-        <li>在 App 中点击头像进入账号设置查看账号 ID</li>
+      <ol style="margin-bottom:16px;padding-left:20px;color:#666;font-size:13px;line-height:1.8;">
+        <li>点击下方「打开登录页面」按钮</li>
+        <li>使用小米账号登录（如已登录可跳过）</li>
+        <li>登录成功后，<strong>不要点击退出</strong>，直接关闭标签页</li>
+        <li>在当前页面按 <strong>F12</strong> 打开开发者工具</li>
+        <li>切换到 <strong>Application</strong> 标签</li>
+        <li>左侧找到 <strong>Cookies</strong> -> <strong>https://account.mi.com</strong></li>
+        <li>复制 <code style="background:#f5f5f5;padding:2px 6px;border-radius:4px;">userId</code> 和 <code style="background:#f5f5f5;padding:2px 6px;border-radius:4px;">pass_token</code> 的值</li>
       </ol>
-      <p><strong>关于 PassToken：</strong><br>遇到登录验证码时需要填写。可参考 <a href="https://github.com/idootop/migpt-next/issues/4" target="_blank" style="color:#667eea">此教程</a> 获取。</p>
+      <p style="color:#e74c3c;font-size:12px;margin-bottom:16px;">⚠️ 复制完成后立即关闭小米登录页面，token 退出后失效！</p>
       <div class="modal-actions">
         <button class="modal-btn modal-btn-secondary" onclick="closeModal()">关闭</button>
+        <button class="modal-btn modal-btn-primary" onclick="openMiLogin()">打开登录页面</button>
       </div>
     </div>
   </div>
@@ -286,6 +289,9 @@ const HTML = `<!DOCTYPE html>
     function closeModal(e) {
       if (e && e.target !== e.currentTarget) return;
       document.getElementById('modalOverlay').classList.remove('show');
+    }
+    function openMiLogin() {
+      window.open('https://account.mi.com/', '_blank');
     }
     loadConfig();
     updateStatus();
