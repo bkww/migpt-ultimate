@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  migpt-ultimate:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "36592:36592"
+    volumes:
+      - ./config:/app/config
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
