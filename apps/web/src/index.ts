@@ -59,6 +59,7 @@ const HTML = `<!DOCTYPE html>
     .btn-action { flex: 1; padding: 14px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
     .btn-save { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
     .btn-load { background: #f5f5f5; color: #666; }
+    .btn-scan { background: #ff6900; color: white; }
     .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; border-radius: 10px; color: white; font-weight: 500; font-size: 14px; opacity: 0; transition: opacity 0.3s; z-index: 1000; }
     .toast.show { opacity: 1; }
     .toast.success { background: linear-gradient(135deg, #11998e, #38ef7d); }
@@ -70,6 +71,22 @@ const HTML = `<!DOCTYPE html>
     .collapse-arrow { transition: transform 0.2s; }
     .collapse-content { max-height: 0; overflow: hidden; transition: max-height 0.3s; }
     .collapse-content.open { max-height: 200px; }
+    .btn-scan { background: #ff6900; color: white; padding: 8px 12px; font-size: 12px; border-radius: 6px; border: none; cursor: pointer; margin-left: 10px; }
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 2000; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: white; border-radius: 16px; padding: 24px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto; }
+    .modal h3 { margin: 0 0 16px; color: #333; }
+    .modal p { color: #666; font-size: 14px; line-height: 1.6; margin-bottom: 12px; }
+    .modal ol { color: #666; font-size: 13px; padding-left: 20px; margin-bottom: 16px; }
+    .modal li { margin-bottom: 8px; }
+    .modal-close { background: #eee; color: #666; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .modal-close:hover { background: #ddd; }
+    .modal-input { width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px; font-size: 14px; margin-bottom: 12px; font-family: monospace; }
+    .modal-input:focus { outline: none; border-color: #667eea; }
+    .modal-actions { display: flex; gap: 10px; }
+    .modal-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .modal-btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+    .modal-btn-secondary { background: #eee; color: #666; }
   </style>
 </head>
 <body>
@@ -137,6 +154,23 @@ const HTML = `<!DOCTYPE html>
       <div class="actions">
         <button class="btn-action btn-save" onclick="saveConfig()">保存配置</button>
         <button class="btn-action btn-load" onclick="loadConfig()">加载</button>
+        <button class="btn-action btn-scan" onclick="showModal()">获取凭证</button>
+      </div>
+    </div>
+  </div>
+  <div id="modalOverlay" class="modal-overlay" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h3>获取小米账号凭证</h3>
+      <p>请按以下步骤获取登录凭证：</p>
+      <ol>
+        <li>在手机上打开「小爱音箱」App</li>
+        <li>进入「我的」-「设置」-「登录设备」</li>
+        <li>点击需要使用的设备，记录设备名称 (did)</li>
+        <li>在 App 中点击头像进入账号设置查看账号 ID</li>
+      </ol>
+      <p><strong>关于 PassToken：</strong><br>遇到登录验证码时需要填写。可参考 <a href="https://github.com/idootop/migpt-next/issues/4" target="_blank" style="color:#667eea">此教程</a> 获取。</p>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-secondary" onclick="closeModal()">关闭</button>
       </div>
     </div>
   </div>
@@ -245,6 +279,13 @@ const HTML = `<!DOCTYPE html>
       t.textContent = msg;
       t.className = 'toast ' + type + ' show';
       setTimeout(() => t.classList.remove('show'), 2000);
+    }
+    function showModal() {
+      document.getElementById('modalOverlay').classList.add('show');
+    }
+    function closeModal(e) {
+      if (e && e.target !== e.currentTarget) return;
+      document.getElementById('modalOverlay').classList.remove('show');
     }
     loadConfig();
     updateStatus();

@@ -1,6 +1,6 @@
 # MiGPT Ultimate
 
-> 小爱音箱终极解决方案
+> 小爱音箱MIGPT-web解决方案
 
 本项目是基于 [MiGPT-Next](https://github.com/idootop/migpt-next) 修改而来的升级版本。
 
