@@ -263,7 +263,6 @@ const HTML = `<!DOCTYPE html>
         console.error('Save config error:', e);
         showToast('保存失败: ' + String(e), 'error'); 
       }
-      }
     }
     async function start() {
       const btn = document.getElementById('btnStart');
