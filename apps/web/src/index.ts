@@ -221,40 +221,44 @@ const HTML = `<!DOCTYPE html>
       } catch(e) { showToast('加载失败', 'error'); }
     }
     async function saveConfig() {
-      if (!document.getElementById('did').value.trim()) {
-        showToast('请输入设备名称', 'error');
-        return;
-      }
-      const ttsStr = document.getElementById('ttsCommand').value.trim();
-      let ttsCommand = null;
-      if (ttsStr) {
-        const parts = ttsStr.split(',').map(s => parseInt(s.trim()));
-        if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) ttsCommand = parts;
-      }
-      const config = {
-        speaker: {
-          userId: document.getElementById('userId').value,
-          password: document.getElementById('password').value,
-          passToken: document.getElementById('passToken').value,
-          did: document.getElementById('did').value.trim()
-        },
-        openai: {
-          model: document.getElementById('model').value,
-          baseURL: document.getElementById('baseURL').value,
-          apiKey: document.getElementById('apiKey').value
-        },
-        prompt: { system: '你是一个智能助手小爱同学。请用友好的语气回答用户的问题。' },
-        callAIKeywords: ['请', '你'],
-        ttsCommand
-      };
       try {
+        if (!document.getElementById('did').value.trim()) {
+          showToast('请输入设备名称', 'error');
+          return;
+        }
+        const ttsStr = document.getElementById('ttsCommand').value.trim();
+        let ttsCommand = null;
+        if (ttsStr) {
+          const parts = ttsStr.split(',').map(s => parseInt(s.trim()));
+          if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) ttsCommand = parts;
+        }
+        const config = {
+          speaker: {
+            userId: (document.getElementById('userId') as HTMLInputElement).value,
+            password: (document.getElementById('password') as HTMLInputElement).value,
+            passToken: (document.getElementById('passToken') as HTMLInputElement).value,
+            did: (document.getElementById('did') as HTMLInputElement).value.trim()
+          },
+          openai: {
+            model: (document.getElementById('model') as HTMLInputElement).value,
+            baseURL: (document.getElementById('baseURL') as HTMLInputElement).value,
+            apiKey: (document.getElementById('apiKey') as HTMLInputElement).value
+          },
+          prompt: { system: '你是一个智能助手小爱同学。请用友好的语气回答用户的问题。' },
+          callAIKeywords: ['请', '你'],
+          ttsCommand
+        };
         const res = await fetch('/api/config', {
           method: 'PUT',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(config)
         });
-        showToast(res.ok ? '配置已保存' : '保存失败', res.ok ? 'success' : 'error');
-      } catch(e) { showToast('保存失败', 'error'); }
+        const data = await res.json();
+        showToast(data.success ? '配置已保存' : (data.error || '保存失败'), data.success ? 'success' : 'error');
+      } catch(e) { 
+        console.error('Save config error:', e);
+        showToast('保存失败: ' + String(e), 'error'); 
+      }
     }
     async function start() {
       const btn = document.getElementById('btnStart');
