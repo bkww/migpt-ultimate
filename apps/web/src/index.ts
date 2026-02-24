@@ -117,7 +117,10 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="form-section">
           <label class="form-label">设备名称</label>
-          <input type="text" class="form-input" id="did" placeholder="小爱音箱">
+          <div style="display:flex;gap:8px;">
+            <input type="text" class="form-input" id="did" placeholder="小爱音箱" style="flex:1;">
+            <button class="btn-scan" onclick="fetchDevices()">获取设备</button>
+          </div>
         </div>
       </div>
       <div class="form-section">
@@ -293,6 +296,48 @@ const HTML = `<!DOCTYPE html>
     function openMiLogin() {
       window.open('https://account.mi.com/', '_blank');
     }
+    async function fetchDevices() {
+      const userId = document.getElementById('userId').value;
+      const password = document.getElementById('password').value;
+      if (!userId || !password) {
+        showToast('请先填写小米账号和密码', 'error');
+        return;
+      }
+      const btn = document.querySelector('.btn-scan');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '获取中...';
+      }
+      try {
+        const res = await fetch('/api/devices', { method: 'POST' });
+        const data = await res.json();
+        if (data.error) {
+          showToast(data.error, 'error');
+        } else if (data.devices && data.devices.length > 0) {
+          let list = '';
+          data.devices.forEach(function(d: any) { list += d.name + ' (' + d.did + ')\n'; });
+          const selected = prompt('请选择设备（输入设备名称）：\n\n' + list + '\n直接回车使用第一个设备');
+          if (selected) {
+            const device = data.devices.find(function(d: any) { return d.name === selected || d.name + ' (' + d.did + ')' === selected; });
+            if (device) {
+              (document.getElementById('did') as HTMLInputElement).value = device.name;
+              showToast('设备已选择: ' + device.name, 'success');
+            }
+          } else if (selected === '') {
+            (document.getElementById('did') as HTMLInputElement).value = data.devices[0].name;
+            showToast('设备已选择: ' + data.devices[0].name, 'success');
+          }
+        } else {
+          showToast('未找到小爱音箱设备', 'error');
+        }
+      } catch(e) {
+        showToast('获取设备失败', 'error');
+      }
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '获取设备';
+      }
+    }
     loadConfig();
     updateStatus();
     setInterval(updateStatus, 2000);
@@ -427,6 +472,30 @@ app.post('/api/stop', async (_req, res) => {
     console.log('🛑 已停止');
   }
   res.json({ success: true });
+});
+
+app.post('/api/devices', async (_req, res) => {
+  try {
+    const webConfig = loadConfig(configPath);
+    const { speaker } = webConfig;
+    if (!speaker?.userId || !speaker?.password) {
+      return res.status(400).json({ error: '请先配置小米账号' });
+    }
+    const { getMIoT } = await import('@mi-gpt/miot');
+    const miot = await getMIoT(speaker);
+    if (!miot) {
+      return res.status(500).json({ error: '登录失败' });
+    }
+    const devices = await miot.getDevices();
+    const speakerDevices = (devices ?? []).map((d: any) => ({
+      did: d.did,
+      name: d.name,
+      model: d.model,
+    }));
+    res.json({ devices: speakerDevices });
+  } catch (error) {
+    res.status(500).json({ error: String(error) });
+  }
 });
 
 const port = parseInt(process.env.PORT ?? String(DEFAULT_PORT), 10);
