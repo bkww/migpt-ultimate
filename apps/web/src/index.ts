@@ -133,7 +133,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="form-section">
           <label class="form-label">模型</label>
-          <input type="text" class="form-input" id="model" value="gpt-4o-mini">
+          <input type="text" class="form-input" id="model" value="glm-4-flash">
         </div>
       </div>
       <div class="form-section">
@@ -209,8 +209,8 @@ const HTML = `<!DOCTYPE html>
           document.getElementById('password').value = c.speaker?.password || '';
           document.getElementById('passToken').value = c.speaker?.passToken || '';
           document.getElementById('did').value = c.speaker?.did || '';
-          document.getElementById('model').value = c.openai?.model || 'gpt-4o-mini';
-          document.getElementById('baseURL').value = c.openai?.baseURL || 'https://api.openai.com/v1';
+          document.getElementById('model').value = c.openai?.model || 'glm-4-flash';
+          document.getElementById('baseURL').value = c.openai?.baseURL || 'https://open.bigmodel.cn/api/paas/v4';
           document.getElementById('apiKey').value = c.openai?.apiKey || '';
           if (c.ttsCommand) document.getElementById('ttsCommand').value = c.ttsCommand.join(',');
           showToast('配置已加载', 'success');
@@ -321,7 +321,7 @@ function loadConfig(configPath: string): WebConfig {
   if (!existsSync(configPath)) {
     const defaultConfig: WebConfig = {
       speaker: { userId: '', password: '', did: '' },
-      openai: { model: 'gpt-4o-mini', baseURL: 'https://api.openai.com/v1', apiKey: '' },
+      openai: { model: 'glm-4-flash', baseURL: 'https://open.bigmodel.cn/api/paas/v4', apiKey: '' },
       prompt: { system: '你是一个智能助手小爱同学。' },
       callAIKeywords: ['请', '你'],
     };
