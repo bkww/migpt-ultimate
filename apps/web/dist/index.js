@@ -120,7 +120,7 @@ const HTML = `<!DOCTYPE html>
       <div class="form-section">
         <label class="form-label">PassToken <span style="font-weight:normal">(可选)</span></label>
         <textarea class="form-input" id="passToken" placeholder="遇到验证码时需要填写..."></textarea>
-        <div class="form-hint">获取教程: <a href="https://github.com/idootop/migpt-next/issues/4" target="_blank" class="form-link">点击查看</a></div>
+        <div class="form-hint">获取教程: <a href="https://mp.weixin.qq.com/s/tmtXvcSu5EP_bDIG_KcYnA" target="_blank" class="form-link">点击查看</a></div>
       </div>
       <div class="divider"></div>
       <div class="form-section">

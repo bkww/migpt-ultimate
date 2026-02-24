@@ -94,7 +94,7 @@ ttsCommand:
 
 ### Q：一直提示登录失败？
 
-请参考 [MiGPT-Next 教程](https://github.com/idootop/migpt-next/issues/4) 获取 PassToken。
+请参考 [MiGPT-Next 教程](https://mp.weixin.qq.com/s/tmtXvcSu5EP_bDIG_KcYnA) 获取 PassToken。
 
 ### Q：小爱同学总是抢话？
 
