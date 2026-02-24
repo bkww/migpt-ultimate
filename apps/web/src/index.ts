@@ -305,8 +305,8 @@ const HTML = `<!DOCTYPE html>
       window.open('https://account.mi.com/', '_blank');
     }
     async function fetchDevices() {
-      const userId = (document.getElementById('userId') as HTMLInputElement).value;
-      const password = (document.getElementById('password') as HTMLInputElement).value;
+      const userId = getValue('userId');
+      const password = getValue('password');
       if (!userId || !password) {
         showToast('请先填写小米账号和密码', 'error');
         return;
@@ -326,17 +326,17 @@ const HTML = `<!DOCTYPE html>
         if (data.error) {
           showToast(data.error, 'error');
         } else if (data.devices && data.devices.length > 0) {
-          let list = '';
-          data.devices.forEach(function(d: any) { list += d.name + ' (' + d.did + ')\n'; });
-          const selected = prompt('请选择设备（输入设备名称）：\n\n' + list + '\n直接回车使用第一个设备');
+          var list = '';
+          data.devices.forEach(function(d) { list = list + d.name + ' (' + d.did + ')\n'; });
+          var selected = prompt('请选择设备（输入设备名称）：\n\n' + list + '\n直接回车使用第一个设备');
           if (selected) {
-            const device = data.devices.find(function(d: any) { return d.name === selected || d.name + ' (' + d.did + ')' === selected; });
+            var device = data.devices.find(function(d) { return d.name === selected || d.name + ' (' + d.did + ')' === selected; });
             if (device) {
-              (document.getElementById('did') as HTMLInputElement).value = device.name;
+              document.getElementById('did').value = device.name;
               showToast('设备已选择: ' + device.name, 'success');
             }
           } else if (selected === '') {
-            (document.getElementById('did') as HTMLInputElement).value = data.devices[0].name;
+            document.getElementById('did').value = data.devices[0].name;
             showToast('设备已选择: ' + data.devices[0].name, 'success');
           }
         } else {
