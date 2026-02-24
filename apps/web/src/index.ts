@@ -126,6 +126,16 @@ const HTML = `<!DOCTYPE html>
         <div class="form-hint">获取教程: <a href="https://github.com/idootop/migpt-next/issues/4" target="_blank" class="form-link">点击查看</a></div>
       </div>
       <div class="divider"></div>
+      <div class="form-section">
+        <label class="form-label">AI 厂商</label>
+        <select class="form-input" id="aiProvider" onchange="onAiProviderChange()">
+          <option value="zhipu">智谱 AI (推荐)</option>
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic (Claude)</option>
+          <option value="custom">自定义</option>
+        </select>
+        <div class="form-hint" id="aiProviderHint">智谱 AI 免费额度：https://open.bigmodel.cn</div>
+      </div>
       <div class="form-row">
         <div class="form-section">
           <label class="form-label">API Base URL</label>
@@ -138,7 +148,7 @@ const HTML = `<!DOCTYPE html>
       </div>
       <div class="form-section">
         <label class="form-label">API Key</label>
-        <input type="password" class="form-input" id="apiKey" placeholder="sk-...">
+        <input type="password" class="form-input" id="apiKey" placeholder="输入 API Key">
       </div>
       <div class="collapse-header" onclick="toggleCollapse()">
         <h4>高级选项</h4>
@@ -198,6 +208,20 @@ const HTML = `<!DOCTYPE html>
         btnStart.disabled = data.running;
         btnStop.disabled = !data.running;
       } catch(e) {}
+    }
+    var aiProviders = {
+      zhipu: { url: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash-250414', hint: '智谱 AI 免费额度：https://open.bigmodel.cn', keyPlaceholder: '输入智谱 API Key' },
+      openai: { url: 'https://api.openai.com/v1', model: 'gpt-4o-mini', hint: 'OpenAI：https://platform.openai.com', keyPlaceholder: 'sk-...' },
+      anthropic: { url: 'https://api.anthropic.com/v1', model: 'claude-3-haiku-20240307', hint: 'Anthropic Claude：https://console.anthropic.com', keyPlaceholder: '输入 Anthropic API Key' },
+      custom: { url: '', model: '', hint: '自定义', keyPlaceholder: '输入 API Key' }
+    };
+    function onAiProviderChange() {
+      var provider = document.getElementById('aiProvider').value;
+      var info = aiProviders[provider];
+      document.getElementById('baseURL').value = info.url;
+      document.getElementById('model').value = info.model;
+      document.getElementById('apiKey').placeholder = info.keyPlaceholder;
+      document.getElementById('aiProviderHint').textContent = info.hint;
     }
     async function loadConfig() {
       try {
