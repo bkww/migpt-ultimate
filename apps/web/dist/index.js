@@ -205,10 +205,10 @@ const HTML = `<!DOCTYPE html>
       } catch(e) {}
     }
     var aiProviders = {
-      zhipu: { url: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash-250414', hint: '智谱 AI 免费额度：https://open.bigmodel.cn', keyPlaceholder: '输入智谱 API Key' },
-      openai: { url: 'https://api.openai.com/v1', model: 'gpt-4o-mini', hint: 'OpenAI：https://platform.openai.com', keyPlaceholder: 'sk-...' },
-      anthropic: { url: 'https://api.anthropic.com/v1', model: 'claude-3-haiku-20240307', hint: 'Anthropic Claude：https://console.anthropic.com', keyPlaceholder: '输入 Anthropic API Key' },
-      custom: { url: '', model: '', hint: '自定义', keyPlaceholder: '输入 API Key' }
+      zhipu: { url: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash-250414', keyUrl: 'https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys', keyPlaceholder: '输入智谱 API Key' },
+      openai: { url: 'https://api.openai.com/v1', model: 'gpt-4o-mini', keyUrl: 'https://platform.openai.com/api-keys', keyPlaceholder: 'sk-...' },
+      anthropic: { url: 'https://api.anthropic.com/v1', model: 'claude-3-haiku-20240307', keyUrl: 'https://console.anthropic.com/settings/keys', keyPlaceholder: '输入 Anthropic API Key' },
+      custom: { url: '', model: '', keyUrl: '', keyPlaceholder: '输入 API Key' }
     };
     function onAiProviderChange() {
       var provider = document.getElementById('aiProvider').value;
@@ -216,7 +216,11 @@ const HTML = `<!DOCTYPE html>
       document.getElementById('baseURL').value = info.url;
       document.getElementById('model').value = info.model;
       document.getElementById('apiKey').placeholder = info.keyPlaceholder;
-      document.getElementById('aiProviderHint').textContent = info.hint;
+      if (info.keyUrl) {
+        document.getElementById('aiProviderHint').innerHTML = '<a href="' + info.keyUrl + '" target="_blank" style="color:#667eea;text-decoration:none;">获取 API Key</a>';
+      } else {
+        document.getElementById('aiProviderHint').innerHTML = '';
+      }
     }
     async function loadConfig() {
       try {
@@ -309,6 +313,7 @@ const HTML = `<!DOCTYPE html>
       window.open('https://account.mi.com/', '_blank');
     }
     loadConfig();
+    onAiProviderChange();
     updateStatus();
     setInterval(updateStatus, 2000);
   </script>
