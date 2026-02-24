@@ -1,6 +1,6 @@
 # MiGPT Ultimate
 
-> 小爱音箱MIGPT-web解决方案
+> 小爱音箱终极解决方案
 
 本项目是基于 [MiGPT-Next](https://github.com/idootop/migpt-next) 修改而来的升级版本。
 
@@ -8,30 +8,31 @@
 
 只需两步即可运行：
 
-```shell
-# 1. 克隆项目
-git clone https://github.com/zhuzhu88920/migpt-ultimate.git
-cd migpt-ultimate
+```yaml
+services:
+  migpt-ultimate:
+    image: zhuzhu88920/migpt-ultimate:latest
+    ports:
+      - "36592:36592"
+    volumes:
+      - ./config:/app/config
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+```
 
-# 2. 启动服务
+```bash
 docker-compose up -d
 ```
 
 然后访问 **http://localhost:36592** 在 Web 界面上配置你的小米账号和 API Key 即可。
 
-### 管理命令
-
-```shell
-docker-compose logs -f    # 查看日志
-docker-compose down       # 停止服务
-docker-compose restart   # 重启服务
-```
-
 ## 功能特性
 
+- **Web 管理界面**：浏览器直接配置和控制，实时显示对话日志
+- **实时日志**：右侧面板显示用户提问和 AI 回答，无需查看后台日志
 - **插件系统**：支持自定义插件扩展，可根据关键词触发特定功能
 - **记忆系统**：内置对话记忆功能，AI 可记住之前的对话内容
-- **Web 管理界面**：浏览器直接配置和控制
 - **CLI 命令行工具**：终端快速启动
 - **TTS 支持**：可配置 TTS Command 解决部分机型无声音问题
 

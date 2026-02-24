@@ -29,10 +29,25 @@ const HTML = `<!DOCTYPE html>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-    .container { max-width: 480px; margin: 0 auto; }
-    .header { text-align: center; color: white; margin-bottom: 20px; }
-    .header h1 { font-size: 28px; font-weight: 600; margin-bottom: 5px; }
-    .header p { opacity: 0.8; font-size: 14px; }
+    .page-header { text-align: center; color: white; margin-bottom: 20px; }
+    .page-header h1 { font-size: 28px; font-weight: 600; margin-bottom: 5px; }
+    .page-header p { opacity: 0.8; font-size: 14px; }
+    .main-wrapper { display: flex; gap: 20px; justify-content: center; max-width: 1200px; margin: 0 auto; }
+    .container { width: 480px; flex-shrink: 0; }
+    .log-panel { width: 400px; flex-shrink: 0; background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; max-height: calc(100vh - 40px); }
+    .log-header { color: white; font-size: 14px; font-weight: 600; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .log-clear { background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+    .log-clear:hover { background: rgba(255,255,255,0.3); }
+    .log-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+    .log-list::-webkit-scrollbar { width: 6px; }
+    .log-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+    .log-item { background: rgba(255,255,255,0.1); border-radius: 8px; padding: 10px 12px; color: white; font-size: 12px; line-height: 1.5; }
+    .log-item.user { border-left: 3px solid #f39c12; }
+    .log-item.ai { border-left: 3px solid #27ae60; }
+    .log-item.system { border-left: 3px solid #3498db; }
+    .log-time { color: rgba(255,255,255,0.5); font-size: 10px; margin-bottom: 4px; }
+    .log-content { word-break: break-all; }
+    .log-empty { color: rgba(255,255,255,0.5); text-align: center; padding: 20px; font-size: 13px; }
     .card { background: white; border-radius: 16px; padding: 20px; margin-bottom: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); }
     .status-bar { display: flex; align-items: center; justify-content: space-between; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
     .status-bar.running { background: linear-gradient(135deg, #11998e, #38ef7d); }
@@ -90,12 +105,13 @@ const HTML = `<!DOCTYPE html>
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>MiGPT Ultimate</h1>
-      <p>小爱音箱终极解决方案</p>
-    </div>
-    <div class="card">
+  <div class="page-header">
+    <h1>MiGPT Ultimate</h1>
+    <p>小爱音箱终极解决方案</p>
+  </div>
+  <div class="main-wrapper">
+    <div class="container">
+      <div class="card">
       <div id="statusBar" class="status-bar stopped">
         <div class="status-indicator">
           <div class="status-dot"></div>
@@ -104,6 +120,7 @@ const HTML = `<!DOCTYPE html>
         <div class="btn-group">
           <button class="btn btn-start" id="btnStart" onclick="start()">启动</button>
           <button class="btn btn-stop" id="btnStop" onclick="stop()" disabled>停止</button>
+          <button class="btn btn-save" onclick="saveConfig()">保存配置</button>
         </div>
       </div>
       <div class="form-section">
@@ -150,21 +167,21 @@ const HTML = `<!DOCTYPE html>
         <label class="form-label">API Key</label>
         <input type="password" class="form-input" id="apiKey" placeholder="输入 API Key">
       </div>
-      <div class="collapse-header" onclick="toggleCollapse()">
-        <h4>高级选项</h4>
-        <span class="collapse-arrow" id="collapseArrow">▼</span>
-      </div>
-      <div class="collapse-content" id="collapseContent">
-        <div class="form-section" style="display:flex;align-items:center;gap:10px;">
-          <input type="checkbox" id="ttsEnabled" style="width:18px;height:18px;">
-          <label class="form-label" style="margin:0;">启用 TTS (解决部分小爱不播放声音问题)</label>
-        </div>
-      </div>
-      <div class="actions">
-        <button class="btn-action btn-save" onclick="saveConfig()">保存配置</button>
-        <button class="btn-action btn-load" onclick="loadConfig()">加载</button>
+      <div class="form-section" style="display:flex;align-items:center;gap:10px;">
+        <input type="checkbox" id="ttsEnabled" style="width:18px;height:18px;">
+        <label class="form-label" style="margin:0;">启用 TTS (解决部分小爱不播放声音问题)</label>
       </div>
     </div>
+  </div>
+  <div class="log-panel">
+    <div class="log-header">
+      <span>实时对话日志</span>
+      <button class="log-clear" onclick="clearLogs()">清空</button>
+    </div>
+    <div class="log-list" id="logList">
+      <div class="log-empty">等待对话...</div>
+    </div>
+  </div>
   </div>
   <div id="modalOverlay" class="modal-overlay" onclick="closeModal(event)">
     <div class="modal" onclick="event.stopPropagation()">
@@ -197,6 +214,7 @@ const HTML = `<!DOCTYPE html>
       try {
         const res = await fetch('/api/status');
         const data = await res.json();
+        console.log('[前端] updateStatus:', data);
         const bar = document.getElementById('statusBar');
         const text = document.getElementById('statusText');
         const btnStart = document.getElementById('btnStart');
@@ -205,7 +223,7 @@ const HTML = `<!DOCTYPE html>
         text.textContent = data.running ? '运行中' : '已停止';
         btnStart.disabled = data.running;
         btnStop.disabled = !data.running;
-      } catch(e) {}
+      } catch(e) { console.log('[前端] updateStatus error:', e); }
     }
     var aiProviders = {
       zhipu: { url: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash-250414', keyUrl: 'https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys', keyPlaceholder: '输入智谱 API Key' },
@@ -278,20 +296,18 @@ const HTML = `<!DOCTYPE html>
     async function start() {
       const btn = document.getElementById('btnStart');
       btn.disabled = true;
-      btn.textContent = '启动中...';
       try {
         const res = await fetch('/api/start', {method: 'POST'});
         const data = await res.json();
         if (data.error) {
           showToast(data.error, 'error');
           btn.disabled = false;
-          btn.textContent = '启动';
+          updateStatus();
         } else {
-          setTimeout(updateStatus, 500);
+          updateStatus();
         }
       } catch(e) {
         btn.disabled = false;
-        btn.textContent = '启动';
       }
     }
     async function stop() {
@@ -319,6 +335,29 @@ const HTML = `<!DOCTYPE html>
     onAiProviderChange();
     updateStatus();
     setInterval(updateStatus, 2000);
+    let lastLogCount = 0;
+    async function updateLogs() {
+      try {
+        const res = await fetch('/api/logs');
+        const data = await res.json();
+        const list = document.getElementById('logList');
+        if (!data.logs || data.logs.length === 0) {
+          list.innerHTML = '<div class="log-empty">等待对话...</div>';
+          return;
+        }
+        if (data.logs.length === lastLogCount) return;
+        lastLogCount = data.logs.length;
+        list.innerHTML = data.logs.map(log => 
+          '<div class="log-item ' + log.type + '"><div class="log-time">' + log.time + '</div><div class="log-content">' + log.content + '</div></div>'
+        ).join('');
+      } catch(e) {}
+    }
+    function clearLogs() {
+      lastLogCount = 0;
+      document.getElementById('logList').innerHTML = '<div class="log-empty">等待对话...</div>';
+    }
+    updateLogs();
+    setInterval(updateLogs, 1000);
   </script>
 </body>
 </html>`;
@@ -363,6 +402,7 @@ function buildMiGPTConfig(webConfig: WebConfig): MiGPTConfig {
     prompt: webConfig.prompt,
     callAIKeywords: webConfig.callAIKeywords || ['请', '你'],
     async onMessage(engine, msg) {
+      addLog('user', `🎤 用户提问: ${msg.text}`);
       const keywords = webConfig.callAIKeywords || ['请', '你'];
       if (!keywords.some((e) => msg.text.startsWith(e))) {
         return undefined;
@@ -370,6 +410,7 @@ function buildMiGPTConfig(webConfig: WebConfig): MiGPTConfig {
       await engine.speaker.abortXiaoAI();
       const text = await ChatBot.chat(msg);
       if (!text) return { handled: true };
+      addLog('ai', `🤖 AI 回答: ${text}`);
       console.log(`🔊 ${text}`);
       if (ttsCommand) {
         await engine.MiOT.doAction(ttsCommand[0], ttsCommand[1], text);
@@ -390,12 +431,33 @@ function suppressBanner(str: string): boolean {
 let isRunning = false;
 let configPath = join(CONFIG_DIR, 'default.yaml');
 
+const logs: { time: string; type: string; content: string }[] = [];
+const MAX_LOGS = 100;
+
+function addLog(type: string, content: string) {
+  const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+  logs.unshift({ time, type, content });
+  if (logs.length > MAX_LOGS) logs.pop();
+}
+
+process.on('uncaughtException', (err) => {
+  addLog('system', '❌ 发生错误: ' + err.message);
+  console.error('❌ 未捕获的错误:', err.message);
+});
+
+process.on('unhandledRejection', (reason) => {
+  addLog('system', '❌ 未处理的拒绝: ' + String(reason));
+  console.error('❌ 未处理的Promise拒绝:', reason);
+});
+
 const app = express();
 app.use(express.json());
 
 app.get('/', (_req, res) => res.send(HTML));
 
 app.get('/api/status', (_req, res) => res.json({ running: isRunning }));
+
+app.get('/api/logs', (_req, res) => res.json({ logs }));
 
 app.get('/api/config', (_req, res) => {
   try {
@@ -420,6 +482,7 @@ app.put('/api/config', (req, res) => {
 });
 
 app.post('/api/start', async (_req, res) => {
+  console.log('[/api/start] isRunning:', isRunning);
   if (isRunning) {
     return res.json({ success: true });
   }
@@ -433,12 +496,20 @@ app.post('/api/start', async (_req, res) => {
     };
     
     console.log(kBanner);
-    MiGPT.start(migptConfig);
+    addLog('system', '🚀 正在启动服务...');
+    console.log('[/api/start] 调用 MiGPT.start...');
+    
     isRunning = true;
+    await MiGPT.start(migptConfig);
+    addLog('system', '✅ 服务已启动');
     console.log('✅ 服务已启动');
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: String(error) });
+    isRunning = false;
+    const errMsg = String(error);
+    console.error('❌ 启动失败:', errMsg);
+    addLog('system', '❌ 启动失败: ' + errMsg);
+    res.status(500).json({ error: errMsg });
   }
 });
 
@@ -447,6 +518,7 @@ app.post('/api/stop', async (_req, res) => {
     await MiGPT.stop();
     isRunning = false;
     console.log = originalLog;
+    addLog('system', '🛑 服务已停止');
     console.log('🛑 已停止');
   }
   res.json({ success: true });
