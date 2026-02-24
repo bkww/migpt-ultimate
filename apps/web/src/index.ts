@@ -155,10 +155,9 @@ const HTML = `<!DOCTYPE html>
         <span class="collapse-arrow" id="collapseArrow">▼</span>
       </div>
       <div class="collapse-content" id="collapseContent">
-        <div class="form-section">
-          <label class="form-label">TTS Command <span style="font-weight:normal">(SIID,AIID)</span></label>
-          <input type="text" class="form-input" id="ttsCommand" placeholder="如: 5,1">
-          <div class="form-hint">若小爱不播放AI回复，填写此参数。查询: <a href="https://home.miot-spec.com" target="_blank" class="form-link">miot-spec</a></div>
+        <div class="form-section" style="display:flex;align-items:center;gap:10px;">
+          <input type="checkbox" id="ttsEnabled" style="width:18px;height:18px;">
+          <label class="form-label" style="margin:0;">启用 TTS (解决部分小爱不播放声音问题)</label>
         </div>
       </div>
       <div class="actions">
@@ -235,7 +234,7 @@ const HTML = `<!DOCTYPE html>
           document.getElementById('model').value = c.openai?.model || 'glm-4-flash-250414';
           document.getElementById('baseURL').value = c.openai?.baseURL || 'https://open.bigmodel.cn/api/paas/v4';
           document.getElementById('apiKey').value = c.openai?.apiKey || '';
-          if (c.ttsCommand) document.getElementById('ttsCommand').value = c.ttsCommand.join(',');
+          document.getElementById('ttsEnabled').checked = c.ttsCommand !== null && c.ttsCommand !== undefined && c.ttsCommand !== false;
           showToast('配置已加载', 'success');
         }
       } catch(e) { showToast('加载失败', 'error'); }
@@ -245,12 +244,8 @@ const HTML = `<!DOCTYPE html>
         showToast('请输入设备名称', 'error');
         return;
       }
-      const ttsStr = document.getElementById('ttsCommand').value.trim();
-      let ttsCommand = null;
-      if (ttsStr) {
-        const parts = ttsStr.split(',').map(s => parseInt(s.trim()));
-        if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) ttsCommand = parts;
-      }
+      var ttsEnabled = document.getElementById('ttsEnabled').checked;
+      var ttsCommand = ttsEnabled ? [5, 1] : null;
       const config = {
         speaker: {
           userId: document.getElementById('userId').value,
