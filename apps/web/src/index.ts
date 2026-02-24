@@ -117,10 +117,7 @@ const HTML = `<!DOCTYPE html>
         </div>
         <div class="form-section">
           <label class="form-label">设备名称</label>
-          <div style="display:flex;gap:8px;">
-            <input type="text" class="form-input" id="did" placeholder="小爱音箱" style="flex:1;">
-            <button class="btn-scan" onclick="fetchDevices()">获取设备</button>
-          </div>
+          <input type="text" class="form-input" id="did" placeholder="小爱音箱">
         </div>
       </div>
       <div class="form-section">
@@ -155,9 +152,9 @@ const HTML = `<!DOCTYPE html>
         </div>
       </div>
       <div class="actions">
-        <button type="button" class="btn-action btn-save" onclick="saveConfig()">保存配置</button>
-        <button type="button" class="btn-action btn-load" onclick="loadConfig()">加载</button>
-        <button type="button" class="btn-action btn-scan" onclick="showModal()">获取凭证</button>
+        <button class="btn-action btn-save" onclick="saveConfig()">保存配置</button>
+        <button class="btn-action btn-load" onclick="loadConfig()">加载</button>
+        <button class="btn-action btn-scan" onclick="showModal()">获取凭证</button>
       </div>
     </div>
   </div>
@@ -220,49 +217,41 @@ const HTML = `<!DOCTYPE html>
         }
       } catch(e) { showToast('加载失败', 'error'); }
     }
-    function getValue(id) {
-      const el = document.getElementById(id);
-      return el ? el.value : '';
-    }
     async function saveConfig() {
+      if (!document.getElementById('did').value.trim()) {
+        showToast('请输入设备名称', 'error');
+        return;
+      }
+      const ttsStr = document.getElementById('ttsCommand').value.trim();
+      let ttsCommand = null;
+      if (ttsStr) {
+        const parts = ttsStr.split(',').map(s => parseInt(s.trim()));
+        if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) ttsCommand = parts;
+      }
+      const config = {
+        speaker: {
+          userId: document.getElementById('userId').value,
+          password: document.getElementById('password').value,
+          passToken: document.getElementById('passToken').value,
+          did: document.getElementById('did').value.trim()
+        },
+        openai: {
+          model: document.getElementById('model').value,
+          baseURL: document.getElementById('baseURL').value,
+          apiKey: document.getElementById('apiKey').value
+        },
+        prompt: { system: '你是一个智能助手小爱同学。请用友好的语气回答用户的问题。' },
+        callAIKeywords: ['请', '你'],
+        ttsCommand
+      };
       try {
-        if (!getValue('did').trim()) {
-          showToast('请输入设备名称', 'error');
-          return;
-        }
-        const ttsStr = getValue('ttsCommand').trim();
-        let ttsCommand = null;
-        if (ttsStr) {
-          const parts = ttsStr.split(',').map(s => parseInt(s.trim()));
-          if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) ttsCommand = parts;
-        }
-        const config = {
-          speaker: {
-            userId: getValue('userId'),
-            password: getValue('password'),
-            passToken: getValue('passToken'),
-            did: getValue('did').trim()
-          },
-          openai: {
-            model: getValue('model'),
-            baseURL: getValue('baseURL'),
-            apiKey: getValue('apiKey')
-          },
-          prompt: { system: '你是一个智能助手小爱同学。请用友好的语气回答用户的问题。' },
-          callAIKeywords: ['请', '你'],
-          ttsCommand
-        };
         const res = await fetch('/api/config', {
           method: 'PUT',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(config)
         });
-        const data = await res.json();
-        showToast(data.success ? '配置已保存' : (data.error || '保存失败'), data.success ? 'success' : 'error');
-      } catch(e) { 
-        console.error('Save config error:', e);
-        showToast('保存失败: ' + String(e), 'error'); 
-      }
+        showToast(res.ok ? '配置已保存' : '保存失败', res.ok ? 'success' : 'error');
+      } catch(e) { showToast('保存失败', 'error'); }
     }
     async function start() {
       const btn = document.getElementById('btnStart');
@@ -303,52 +292,6 @@ const HTML = `<!DOCTYPE html>
     }
     function openMiLogin() {
       window.open('https://account.mi.com/', '_blank');
-    }
-    async function fetchDevices() {
-      const userId = getValue('userId');
-      const password = getValue('password');
-      if (!userId || !password) {
-        showToast('请先填写小米账号和密码', 'error');
-        return;
-      }
-      const btn = document.querySelector('.btn-scan');
-      if (btn) {
-        btn.disabled = true;
-        btn.textContent = '获取中...';
-      }
-      try {
-        const res = await fetch('/api/devices', { 
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, password })
-        });
-        const data = await res.json();
-        if (data.error) {
-          showToast(data.error, 'error');
-        } else if (data.devices && data.devices.length > 0) {
-          var list = '';
-          data.devices.forEach(function(d) { list = list + d.name + ' (' + d.did + ')\n'; });
-          var selected = prompt('请选择设备（输入设备名称）：\n\n' + list + '\n直接回车使用第一个设备');
-          if (selected) {
-            var device = data.devices.find(function(d) { return d.name === selected || d.name + ' (' + d.did + ')' === selected; });
-            if (device) {
-              document.getElementById('did').value = device.name;
-              showToast('设备已选择: ' + device.name, 'success');
-            }
-          } else if (selected === '') {
-            document.getElementById('did').value = data.devices[0].name;
-            showToast('设备已选择: ' + data.devices[0].name, 'success');
-          }
-        } else {
-          showToast('未找到小爱音箱设备', 'error');
-        }
-      } catch(e) {
-        showToast('获取设备失败', 'error');
-      }
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = '获取设备';
-      }
     }
     loadConfig();
     updateStatus();
@@ -484,30 +427,6 @@ app.post('/api/stop', async (_req, res) => {
     console.log('🛑 已停止');
   }
   res.json({ success: true });
-});
-
-app.post('/api/devices', async (req, res) => {
-  try {
-    const { userId, password } = req.body;
-    if (!userId || !password) {
-      return res.status(400).json({ error: '请先填写小米账号和密码' });
-    }
-    const { getMIoT } = await import('@mi-gpt/miot');
-    const speaker = { userId, password, did: '' };
-    const miot = await getMIoT(speaker);
-    if (!miot) {
-      return res.status(500).json({ error: '登录失败，请检查账号密码' });
-    }
-    const devices = await miot.getDevices();
-    const speakerDevices = (devices ?? []).map((d: any) => ({
-      did: d.did,
-      name: d.name,
-      model: d.model,
-    }));
-    res.json({ devices: speakerDevices });
-  } catch (error) {
-    res.status(500).json({ error: String(error) });
-  }
 });
 
 const port = parseInt(process.env.PORT ?? String(DEFAULT_PORT), 10);
