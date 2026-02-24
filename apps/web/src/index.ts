@@ -155,9 +155,9 @@ const HTML = `<!DOCTYPE html>
         </div>
       </div>
       <div class="actions">
-        <button class="btn-action btn-save" onclick="saveConfig()">保存配置</button>
-        <button class="btn-action btn-load" onclick="loadConfig()">加载</button>
-        <button class="btn-action btn-scan" onclick="showModal()">获取凭证</button>
+        <button type="button" class="btn-action btn-save" onclick="saveConfig()">保存配置</button>
+        <button type="button" class="btn-action btn-load" onclick="loadConfig()">加载</button>
+        <button type="button" class="btn-action btn-scan" onclick="showModal()">获取凭证</button>
       </div>
     </div>
   </div>
@@ -297,8 +297,8 @@ const HTML = `<!DOCTYPE html>
       window.open('https://account.mi.com/', '_blank');
     }
     async function fetchDevices() {
-      const userId = document.getElementById('userId').value;
-      const password = document.getElementById('password').value;
+      const userId = (document.getElementById('userId') as HTMLInputElement).value;
+      const password = (document.getElementById('password') as HTMLInputElement).value;
       if (!userId || !password) {
         showToast('请先填写小米账号和密码', 'error');
         return;
@@ -309,7 +309,11 @@ const HTML = `<!DOCTYPE html>
         btn.textContent = '获取中...';
       }
       try {
-        const res = await fetch('/api/devices', { method: 'POST' });
+        const res = await fetch('/api/devices', { 
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, password })
+        });
         const data = await res.json();
         if (data.error) {
           showToast(data.error, 'error');
@@ -474,17 +478,17 @@ app.post('/api/stop', async (_req, res) => {
   res.json({ success: true });
 });
 
-app.post('/api/devices', async (_req, res) => {
+app.post('/api/devices', async (req, res) => {
   try {
-    const webConfig = loadConfig(configPath);
-    const { speaker } = webConfig;
-    if (!speaker?.userId || !speaker?.password) {
-      return res.status(400).json({ error: '请先配置小米账号' });
+    const { userId, password } = req.body;
+    if (!userId || !password) {
+      return res.status(400).json({ error: '请先填写小米账号和密码' });
     }
     const { getMIoT } = await import('@mi-gpt/miot');
+    const speaker = { userId, password, did: '' };
     const miot = await getMIoT(speaker);
     if (!miot) {
-      return res.status(500).json({ error: '登录失败' });
+      return res.status(500).json({ error: '登录失败，请检查账号密码' });
     }
     const devices = await miot.getDevices();
     const speakerDevices = (devices ?? []).map((d: any) => ({
