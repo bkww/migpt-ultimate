@@ -134,7 +134,7 @@ const HTML = `<!DOCTYPE html>
           <option value="anthropic">Anthropic (Claude)</option>
           <option value="custom">自定义</option>
         </select>
-        <div class="form-hint" id="aiProviderHint">智谱 AI 免费额度：https://open.bigmodel.cn</div>
+        <div class="form-hint" id="aiProviderHint"><a href="https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys" target="_blank" style="color:#667eea;text-decoration:none;">智谱 API Key 获取</a></div>
       </div>
       <div class="form-row">
         <div class="form-section">
