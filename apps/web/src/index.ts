@@ -220,13 +220,17 @@ const HTML = `<!DOCTYPE html>
         }
       } catch(e) { showToast('加载失败', 'error'); }
     }
+    function getValue(id) {
+      const el = document.getElementById(id);
+      return el ? el.value : '';
+    }
     async function saveConfig() {
       try {
-        if (!document.getElementById('did').value.trim()) {
+        if (!getValue('did').trim()) {
           showToast('请输入设备名称', 'error');
           return;
         }
-        const ttsStr = document.getElementById('ttsCommand').value.trim();
+        const ttsStr = getValue('ttsCommand').trim();
         let ttsCommand = null;
         if (ttsStr) {
           const parts = ttsStr.split(',').map(s => parseInt(s.trim()));
@@ -234,15 +238,15 @@ const HTML = `<!DOCTYPE html>
         }
         const config = {
           speaker: {
-            userId: (document.getElementById('userId') as HTMLInputElement).value,
-            password: (document.getElementById('password') as HTMLInputElement).value,
-            passToken: (document.getElementById('passToken') as HTMLInputElement).value,
-            did: (document.getElementById('did') as HTMLInputElement).value.trim()
+            userId: getValue('userId'),
+            password: getValue('password'),
+            passToken: getValue('passToken'),
+            did: getValue('did').trim()
           },
           openai: {
-            model: (document.getElementById('model') as HTMLInputElement).value,
-            baseURL: (document.getElementById('baseURL') as HTMLInputElement).value,
-            apiKey: (document.getElementById('apiKey') as HTMLInputElement).value
+            model: getValue('model'),
+            baseURL: getValue('baseURL'),
+            apiKey: getValue('apiKey')
           },
           prompt: { system: '你是一个智能助手小爱同学。请用友好的语气回答用户的问题。' },
           callAIKeywords: ['请', '你'],
@@ -258,6 +262,8 @@ const HTML = `<!DOCTYPE html>
       } catch(e) { 
         console.error('Save config error:', e);
         showToast('保存失败: ' + String(e), 'error'); 
+      }
+    }
       }
     }
     async function start() {
