@@ -5,6 +5,11 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
+import { Readable } from 'node:stream';
+import { nanoid } from 'nanoid';
+import https from 'https';
+
+console.log('Starting MiGPT Ultimate...');
 
 const DEFAULT_PORT = 36592;
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -151,7 +156,7 @@ const HTML = `<!DOCTYPE html>
           <option value="anthropic">Anthropic (Claude)</option>
           <option value="custom">自定义</option>
         </select>
-        <div class="form-hint" id="aiProviderHint"><a href="https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys" target="_blank" style="color:#667eea;text-decoration:none;">智谱 API Key 获取</a></div>
+        <div class="form-hint" id="aiProviderHint"><a href="https://www.bigmodel.cn/invite?icode=UgdFYo3%2Bt9PkmuW4jSKfhwZ3c5owLmCCcMQXWcJRS8E%3D" target="_blank" style="color:#667eea;text-decoration:none;">智谱 API Key 获取</a></div>
       </div>
       <div class="form-row">
         <div class="form-section">
@@ -168,8 +173,62 @@ const HTML = `<!DOCTYPE html>
         <input type="password" class="form-input" id="apiKey" placeholder="输入 API Key">
       </div>
       <div class="form-section" style="display:flex;align-items:center;gap:10px;">
-        <input type="checkbox" id="ttsEnabled" style="width:18px;height:18px;">
-        <label class="form-label" style="margin:0;">启用 TTS (解决部分小爱不播放声音问题)</label>
+        <input type="checkbox" id="ttsCommandEnabled" style="width:18px;height:18px;">
+        <label class="form-label" style="margin:0;">启用 TTS Command (解决部分小爱不播放声音问题)</label>
+      </div>
+      <div class="divider"></div>
+      <div class="form-section">
+        <label class="form-label">自定义 TTS 服务</label>
+        <select class="form-input" id="ttsProvider" onchange="onTtsProviderChange()">
+          <option value="">不使用</option>
+          <option value="edge">Edge TTS</option>
+          <option value="volcano">火山引擎 (豆包)</option>
+          <option value="openai">OpenAI TTS</option>
+        </select>
+      </div>
+      <div id="ttsEdgeConfig" style="display:none;">
+        <div class="form-section">
+          <label class="form-label">Secret Key</label>
+          <input type="password" class="form-input" id="ttsEdgeSecretKey" placeholder="Azure 语音密钥">
+        </div>
+        <div class="form-section">
+          <label class="form-label">Trusted Token</label>
+          <input type="password" class="form-input" id="ttsEdgeTrustedToken" placeholder="Azure 语音可信令牌">
+        </div>
+      </div>
+      <div id="ttsVolcanoConfig" style="display:none;">
+        <div class="form-row">
+          <div class="form-section">
+            <label class="form-label">App ID</label>
+            <input type="text" class="form-input" id="ttsVolcanoAppId" placeholder="火山引擎 AppId">
+          </div>
+          <div class="form-section">
+            <label class="form-label">Access Token</label>
+            <input type="password" class="form-input" id="ttsVolcanoAccessToken" placeholder="火山引擎 AccessToken">
+          </div>
+        </div>
+      </div>
+      <div id="ttsOpenaiConfig" style="display:none;">
+        <div class="form-section">
+          <label class="form-label">API Key</label>
+          <input type="password" class="form-input" id="ttsOpenaiKey" placeholder="OpenAI API Key">
+        </div>
+        <div class="form-section">
+          <label class="form-label">模型</label>
+          <input type="text" class="form-input" id="ttsOpenaiModel" value="tts-1">
+        </div>
+      </div>
+      <div id="ttsSpeakerConfig" style="display:none;">
+        <div class="form-section">
+          <label class="form-label">默认音色</label>
+          <select class="form-input" id="ttsDefaultSpeaker">
+          </select>
+        </div>
+        <div class="form-section">
+          <label class="form-label">对外地址</label>
+          <input type="text" class="form-input" id="publicURL" placeholder="如 https://your-domain.com:36592">
+          <div class="form-hint">必须能让小爱音箱通过网络访问到此地址</div>
+        </div>
       </div>
     </div>
   </div>
@@ -226,7 +285,7 @@ const HTML = `<!DOCTYPE html>
       } catch(e) { console.log('[前端] updateStatus error:', e); }
     }
     var aiProviders = {
-      zhipu: { url: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash-250414', keyUrl: 'https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys', keyPlaceholder: '输入智谱 API Key' },
+      zhipu: { url: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash-250414', keyUrl: 'https://www.bigmodel.cn/invite?icode=UgdFYo3%2Bt9PkmuW4jSKfhwZ3c5owLmCCcMQXWcJRS8E%3D', keyPlaceholder: '输入智谱 API Key' },
       openai: { url: 'https://api.openai.com/v1', model: 'gpt-4o-mini', keyUrl: 'https://platform.openai.com/api-keys', keyPlaceholder: 'sk-...' },
       anthropic: { url: 'https://api.anthropic.com/v1', model: 'claude-3-haiku-20240307', keyUrl: 'https://console.anthropic.com/settings/keys', keyPlaceholder: '输入 Anthropic API Key' },
       custom: { url: '', model: '', keyUrl: '', keyPlaceholder: '输入 API Key' }
@@ -243,55 +302,141 @@ const HTML = `<!DOCTYPE html>
         document.getElementById('aiProviderHint').innerHTML = '';
       }
     }
+    var kDefaultSpeakers = [
+      { name: '湾区大叔', gender: '男', speaker: 'zh_male_wanqudashu_moon_bigtts' },
+      { name: '呆萌川妹', gender: '女', speaker: 'zh_female_daimengchuanmei_moon_bigtts' },
+      { name: '广州德哥', gender: '男', speaker: 'zh_male_guozhoudege_moon_bigtts' },
+      { name: '北京小爷', gender: '男', speaker: 'zh_male_beijingxiaoye_moon_bigtts' },
+      { name: '少年梓辛', gender: '男', speaker: 'zh_male_shaonianzixin_moon_bigtts' },
+      { name: '魅力女友', gender: '女', speaker: 'zh_female_meilinvyou_moon_bigtts' },
+      { name: '深夜播客', gender: '男', speaker: 'zh_male_shenyeboke_moon_bigtts' },
+      { name: '柔美女友', gender: '女', speaker: 'zh_female_sajiaonvyou_moon_bigtts' },
+      { name: '撒娇学妹', gender: '女', speaker: 'zh_female_yuanqinvyou_moon_bigtts' },
+      { name: '浩宇小哥', gender: '男', speaker: 'zh_male_haoyuxiaoge_moon_bigtts' }
+    ];
+    function onTtsProviderChange() {
+      var provider = document.getElementById('ttsProvider').value;
+      document.getElementById('ttsEdgeConfig').style.display = provider === 'edge' ? 'block' : 'none';
+      document.getElementById('ttsVolcanoConfig').style.display = provider === 'volcano' ? 'block' : 'none';
+      document.getElementById('ttsOpenaiConfig').style.display = provider === 'openai' ? 'block' : 'none';
+      document.getElementById('ttsSpeakerConfig').style.display = provider ? 'block' : 'none';
+      
+      var select = document.getElementById('ttsDefaultSpeaker');
+      select.innerHTML = '';
+      kDefaultSpeakers.forEach(function(s) {
+        var opt = document.createElement('option');
+        opt.value = s.speaker;
+        opt.textContent = s.name + ' (' + s.gender + ')';
+        select.appendChild(opt);
+      });
+    }
+    function updateTtsConfig() {
+      onTtsProviderChange();
+    }
+    function setInputValue(id, value) {
+      var el = document.getElementById(id);
+      if (el) el.value = value || '';
+    }
     async function loadConfig() {
       try {
         const res = await fetch('/api/config');
         const data = await res.json();
         if (data.config) {
           const c = data.config;
-          document.getElementById('userId').value = c.speaker?.userId || '';
-          document.getElementById('password').value = c.speaker?.password || '';
-          document.getElementById('passToken').value = c.speaker?.passToken || '';
-          document.getElementById('did').value = c.speaker?.did || '';
-          document.getElementById('model').value = c.openai?.model || 'glm-4-flash-250414';
-          document.getElementById('baseURL').value = c.openai?.baseURL || 'https://open.bigmodel.cn/api/paas/v4';
-          document.getElementById('apiKey').value = c.openai?.apiKey || '';
-          document.getElementById('ttsEnabled').checked = c.ttsCommand !== null && c.ttsCommand !== undefined && c.ttsCommand !== false;
+          if (c.speaker) {
+            document.getElementById('userId').value = c.speaker.userId || '';
+            document.getElementById('password').value = c.speaker.password || '';
+            document.getElementById('passToken').value = c.speaker.passToken || '';
+            document.getElementById('did').value = c.speaker.did || '';
+          }
+          if (c.openai) {
+            document.getElementById('model').value = c.openai.model || 'glm-4-flash-250414';
+            document.getElementById('baseURL').value = c.openai.baseURL || 'https://open.bigmodel.cn/api/paas/v4';
+            document.getElementById('apiKey').value = c.openai.apiKey || '';
+          }
+          var ttsCmdEl = document.getElementById('ttsCommandEnabled');
+          if (ttsCmdEl) ttsCmdEl.checked = c.ttsCommand !== undefined && c.ttsCommand !== null;
+          var ttsProviderEl = document.getElementById('ttsProvider');
+          if (ttsProviderEl) ttsProviderEl.value = c.tts?.provider || '';
+          setInputValue('ttsEdgeSecretKey', c.tts?.edge?.secretKey);
+          setInputValue('ttsEdgeTrustedToken', c.tts?.edge?.trustedToken);
+          setInputValue('ttsVolcanoAppId', c.tts?.volcano?.appId);
+          setInputValue('ttsVolcanoAccessToken', c.tts?.volcano?.accessToken);
+          setInputValue('ttsOpenaiKey', c.tts?.openai?.apiKey);
+          setInputValue('ttsOpenaiModel', c.tts?.openai?.model || 'tts-1');
+          setInputValue('ttsDefaultSpeaker', c.tts?.defaultSpeaker || 'zh_female_daimengchuanmei_moon_bigtts');
+          setInputValue('publicURL', c.publicURL);
+          updateTtsConfig();
           showToast('配置已加载', 'success');
         }
-      } catch(e) { showToast('加载失败', 'error'); }
+      } catch(e) { showToast('加载失败: ' + e.message, 'error'); }
     }
     async function saveConfig() {
-      if (!document.getElementById('did').value.trim()) {
-        showToast('请输入设备名称', 'error');
-        return;
-      }
-      var ttsEnabled = document.getElementById('ttsEnabled').checked;
-      var ttsCommand = ttsEnabled ? [5, 1] : null;
-      const config = {
-        speaker: {
-          userId: document.getElementById('userId').value,
-          password: document.getElementById('password').value,
-          passToken: document.getElementById('passToken').value,
-          did: document.getElementById('did').value.trim()
-        },
-        openai: {
-          model: document.getElementById('model').value,
-          baseURL: document.getElementById('baseURL').value,
-          apiKey: document.getElementById('apiKey').value
-        },
-        prompt: { system: '你是一个智能助手小爱同学。请用友好的语气回答用户的问题。' },
-        callAIKeywords: ['请', '你'],
-        ttsCommand
-      };
       try {
+        var didEl = document.getElementById('did');
+        if (!didEl || !didEl.value.trim()) {
+          showToast('请输入设备名称', 'error');
+          return;
+        }
+        var ttsCommandEnabled = document.getElementById('ttsCommandEnabled');
+        var ttsCommand = (ttsCommandEnabled && ttsCommandEnabled.checked) ? [5, 1] : undefined;
+        var providerEl = document.getElementById('ttsProvider');
+        var provider = providerEl ? providerEl.value : '';
+        var ttsConfig = { provider };
+        if (provider) {
+          if (provider === 'edge') {
+            var edgeKey = document.getElementById('ttsEdgeSecretKey');
+            var edgeToken = document.getElementById('ttsEdgeTrustedToken');
+            ttsConfig.edge = {
+              secretKey: edgeKey ? edgeKey.value : '',
+              trustedToken: edgeToken ? edgeToken.value : ''
+            };
+          } else if (provider === 'volcano') {
+            var volAppId = document.getElementById('ttsVolcanoAppId');
+            var volToken = document.getElementById('ttsVolcanoAccessToken');
+            ttsConfig.volcano = {
+              appId: volAppId ? volAppId.value : '',
+              accessToken: volToken ? volToken.value : ''
+            };
+          } else if (provider === 'openai') {
+            var openaiKey = document.getElementById('ttsOpenaiKey');
+            var openaiModel = document.getElementById('ttsOpenaiModel');
+            ttsConfig.openai = {
+              apiKey: openaiKey ? openaiKey.value : '',
+              model: openaiModel ? openaiModel.value : 'tts-1'
+            };
+          }
+          var speakerEl = document.getElementById('ttsDefaultSpeaker');
+          ttsConfig.defaultSpeaker = speakerEl ? speakerEl.value : 'zh_female_daimengchuanmei_moon_bigtts';
+        }
+        var config = {
+          speaker: {
+            userId: document.getElementById('userId')?.value || '',
+            password: document.getElementById('password')?.value || '',
+            passToken: document.getElementById('passToken')?.value || '',
+            did: didEl.value.trim()
+          },
+          openai: {
+            model: document.getElementById('model')?.value || 'glm-4-flash-250414',
+            baseURL: document.getElementById('baseURL')?.value || 'https://open.bigmodel.cn/api/paas/v4',
+            apiKey: document.getElementById('apiKey')?.value || ''
+          },
+          prompt: { system: '你是一个智能助手小爱同学。请用友好的语气回答用户的问题。' },
+          callAIKeywords: ['请', '你'],
+          ttsCommand,
+          tts: provider ? ttsConfig : undefined,
+          publicURL: provider ? (document.getElementById('publicURL')?.value || undefined) : undefined
+        };
         const res = await fetch('/api/config', {
           method: 'PUT',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(config)
         });
         showToast(res.ok ? '配置已保存' : '保存失败', res.ok ? 'success' : 'error');
-      } catch(e) { showToast('保存失败', 'error'); }
+      } catch(e) { 
+        console.error('saveConfig error:', e);
+        showToast('保存失败: ' + String(e), 'error'); 
+      }
     }
     async function start() {
       const btn = document.getElementById('btnStart');
@@ -377,6 +522,14 @@ interface WebConfig {
   prompt?: { system: string };
   callAIKeywords?: string[];
   ttsCommand?: [number, number];
+  tts?: {
+    provider?: 'edge' | 'volcano' | 'openai';
+    edge?: { secretKey: string; trustedToken: string };
+    volcano?: { appId: string; accessToken: string };
+    openai?: { apiKey: string; model: string };
+    defaultSpeaker?: string;
+  };
+  publicURL?: string;
 }
 
 function loadConfig(configPath: string): WebConfig {
@@ -396,7 +549,10 @@ function loadConfig(configPath: string): WebConfig {
 
 function buildMiGPTConfig(webConfig: WebConfig): MiGPTConfig {
   const ttsCommand = webConfig.ttsCommand;
-  return {
+  const useCustomTTS = webConfig.tts?.provider && webConfig.publicURL;
+  const ttsBaseURL = useCustomTTS ? webConfig.publicURL : undefined;
+  
+  const config: any = {
     speaker: webConfig.speaker,
     openai: webConfig.openai,
     prompt: webConfig.prompt,
@@ -412,7 +568,18 @@ function buildMiGPTConfig(webConfig: WebConfig): MiGPTConfig {
       if (!text) return { handled: true };
       addLog('ai', `🤖 AI 回答: ${text}`);
       console.log(`🔊 ${text}`);
-      if (ttsCommand) {
+      if (useCustomTTS && ttsBaseURL) {
+        const speaker = webConfig.tts?.defaultSpeaker || 'zh_female_daimengchuanmei_moon_bigtts';
+        const ttsUrl = `${ttsBaseURL}${ttsSecretPath}/tts/tts.mp3?speaker=${speaker}+text=${encodeURIComponent(text)}`;
+        console.log('[TTS] Playing URL:', ttsUrl);
+        try {
+          await engine.speaker.abortXiaoAI();
+          const result = await engine.speaker.play({ url: ttsUrl });
+          console.log('[TTS] play结果:', result);
+        } catch (e) {
+          console.error('[TTS] play错误:', e);
+        }
+      } else if (ttsCommand) {
         await engine.MiOT.doAction(ttsCommand[0], ttsCommand[1], text);
       } else {
         await engine.speaker.play({ text });
@@ -420,6 +587,12 @@ function buildMiGPTConfig(webConfig: WebConfig): MiGPTConfig {
       return { handled: true };
     },
   };
+  
+  if (ttsBaseURL) {
+    config.env = { TTS_BASE_URL: ttsBaseURL };
+  }
+  
+  return config as MiGPTConfig;
 }
 
 const originalLog = console.log;
@@ -453,7 +626,250 @@ process.on('unhandledRejection', (reason) => {
 const app = express();
 app.use(express.json());
 
+let webConfig: WebConfig | undefined;
+const ttsSecret = nanoid();
+const ttsSecretPath = '/' + ttsSecret;
+const ttsPath = ttsSecretPath + '/tts/tts.mp3';
+const ttsSpeakersPath = ttsSecretPath + '/tts/speakers';
+
+app.get('/api/tts-speakers', (_req, res) => {
+  res.json([
+    { name: '湾区大叔', gender: '男', speaker: 'zh_male_wanqudashu_moon_bigtts' },
+    { name: '呆萌川妹', gender: '女', speaker: 'zh_female_daimengchuanmei_moon_bigtts' },
+    { name: '广州德哥', gender: '男', speaker: 'zh_male_guozhoudege_moon_bigtts' },
+    { name: '北京小爷', gender: '男', speaker: 'zh_male_beijingxiaoye_moon_bigtts' },
+    { name: '少年梓辛', gender: '男', speaker: 'zh_male_shaonianzixin_moon_bigtts' },
+    { name: '魅力女友', gender: '女', speaker: 'zh_female_meilinvyou_moon_bigtts' },
+    { name: '深夜播客', gender: '男', speaker: 'zh_male_shenyeboke_moon_bigtts' },
+    { name: '柔美女友', gender: '女', speaker: 'zh_female_sajiaonvyou_moon_bigtts' },
+    { name: '撒娇学妹', gender: '女', speaker: 'zh_female_yuanqinvyou_moon_bigtts' },
+    { name: '浩宇小哥', gender: '男', speaker: 'zh_male_haoyuxiaoge_moon_bigtts' }
+  ]);
+});
+
+app.get(ttsSpeakersPath, (_req, res) => {
+  res.json([
+    { name: '湾区大叔', gender: '男', speaker: 'zh_male_wanqudashu_moon_bigtts' },
+    { name: '呆萌川妹', gender: '女', speaker: 'zh_female_daimengchuanmei_moon_bigtts' },
+    { name: '广州德哥', gender: '男', speaker: 'zh_male_guozhoudege_moon_bigtts' },
+    { name: '北京小爷', gender: '男', speaker: 'zh_male_beijingxiaoye_moon_bigtts' },
+    { name: '少年梓辛', gender: '男', speaker: 'zh_male_shaonianzixin_moon_bigtts' },
+    { name: '魅力女友', gender: '女', speaker: 'zh_female_meilinvyou_moon_bigtts' },
+    { name: '深夜播客', gender: '男', speaker: 'zh_male_shenyeboke_moon_bigtts' },
+    { name: '柔美女友', gender: '女', speaker: 'zh_female_sajiaonvyou_moon_bigtts' },
+    { name: '撒娇学妹', gender: '女', speaker: 'zh_female_yuanqinvyou_moon_bigtts' },
+    { name: '浩宇小哥', gender: '男', speaker: 'zh_male_haoyuxiaoge_moon_bigtts' }
+  ]);
+});
+
+app.get('/api/test-tts', async (req, res) => {
+  const { provider, text } = req.query;
+  if (!text) {
+    res.status(400).json({ error: '缺少 text 参数' });
+    return;
+  }
+  
+  const testText = String(text);
+  
+  try {
+    if (provider === 'volcano') {
+      const ttsConfig = webConfig?.tts;
+      if (!ttsConfig?.volcano?.appId || !ttsConfig?.volcano?.accessToken) {
+        res.status(400).json({ error: '请先配置火山引擎 AppId 和 AccessToken' });
+        return;
+      }
+      
+      const { appId, accessToken } = ttsConfig.volcano;
+      const speaker = ttsConfig.defaultSpeaker || 'zh_female_daimengchuanmei_moon_bigtts';
+      const userId = webConfig?.speaker?.userId || 'user1';
+      
+      const postData = JSON.stringify({
+        app: { appid: appId, token: accessToken, cluster: 'volcano_tts' },
+        user: { uid: userId },
+        audio: {
+          voice_type: speaker,
+          encoding: 'mp3',
+          rate: 24000
+        },
+        request: {
+          reqid: nanoid(),
+          text: testText,
+          text_type: 'plain',
+          operation: 'query'
+        }
+      });
+      
+      const options = {
+        hostname: 'openspeech.bytedance.com',
+        path: '/api/v1/tts',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer; ${accessToken}`
+        }
+      };
+      
+      const chunks: Buffer[] = [];
+      
+      const req2 = https.request(options, (res2) => {
+        res2.on('data', (chunk) => chunks.push(chunk));
+        res2.on('end', () => {
+          const buffer = Buffer.concat(chunks);
+          console.log('[test-tts] 返回原始大小:', buffer.length);
+          
+          // 尝试解析JSON并解码base64音频
+          try {
+            const json = JSON.parse(buffer.toString('utf8'));
+            console.log('[test-tts] JSON响应:', JSON.stringify(json).substring(0, 200));
+            
+            if (json.data && typeof json.data === 'string') {
+              const audioBuffer = Buffer.from(json.data, 'base64');
+              console.log('[test-tts] 解码后音频大小:', audioBuffer.length);
+              res.set('Content-Type', 'audio/mp3');
+              res.send(audioBuffer);
+            } else if (json.code !== 3000) {
+              res.status(500).json({ error: json.message || 'TTS错误' });
+            } else {
+              res.status(500).json({ error: '无效的响应格式' });
+            }
+          } catch (e) {
+            console.error('[test-tts] 解析失败:', buffer.toString('utf8').substring(0, 500));
+            res.status(500).json({ error: '解析失败' });
+          }
+        });
+        res2.on('error', (err) => {
+          console.error('[test-tts] error:', err);
+          res.status(500).json({ error: String(err) });
+        });
+      });
+      
+      req2.on('error', (err) => {
+        console.error('[test-tts] error:', err);
+        res.status(500).json({ error: String(err) });
+      });
+      
+      req2.write(postData);
+      req2.end();
+      
+    } else {
+      res.status(400).json({ error: '只支持 volcano 测试' });
+    }
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
+app.get(ttsPath, (req, res) => {
+  console.log('>>> [TTS] 收到请求:', req.url, '| path:', ttsPath);
+  console.log('[TTS] webConfig:', webConfig ? '已加载' : '未加载');
+  console.log('[TTS] tts provider:', webConfig?.tts?.provider);
+  
+  if (!webConfig || !webConfig.tts?.provider) {
+    res.status(500).send('Internal Server Error');
+    return;
+  }
+
+  const ttsConfig = webConfig.tts;
+  console.log('[TTS] ttsConfig:', JSON.stringify(ttsConfig));
+  
+  const nUrl = req.url.replace('+text=', '&text=');
+  const url = new URL('http://localhost' + nUrl);
+  const speaker = url.searchParams.get('speaker') || ttsConfig.defaultSpeaker || 'zh_female_daimengchuanmei_moon_bigtts';
+  const text = decodeURIComponent(url.searchParams.get('text') || '');
+  
+  console.log('[TTS] 生成选项: speaker=', speaker, ', text=', text);
+
+  if (ttsConfig.provider === 'volcano' && ttsConfig.volcano) {
+    const { appId, accessToken } = ttsConfig.volcano;
+    if (!appId || !accessToken) {
+      res.status(400).send('火山引擎配置不完整');
+      return;
+    }
+    
+    const userId = webConfig?.speaker?.userId || 'user1';
+    
+    const postData = JSON.stringify({
+      app: { appid: appId, token: accessToken, cluster: 'volcano_tts' },
+      user: { uid: userId },
+      audio: {
+        voice_type: speaker,
+        encoding: 'mp3',
+        rate: 24000
+      },
+      request: {
+        reqid: nanoid(),
+        text: text,
+        text_type: 'plain',
+        operation: 'query'
+      }
+    });
+    
+    const options = {
+      hostname: 'openspeech.bytedance.com',
+      path: '/api/v1/tts',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer; ${accessToken}`
+      }
+    };
+    
+    const req2 = https.request(options, (res2) => {
+      const chunks: Buffer[] = [];
+      res2.on('data', (chunk) => chunks.push(chunk));
+      res2.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        console.log('[TTS] 返回原始大小:', buffer.length);
+        
+        // 尝试解析JSON并解码base64音频
+        try {
+          const json = JSON.parse(buffer.toString('utf8'));
+          console.log('[TTS] JSON响应 code:', json.code, 'data长度:', json.data ? json.data.length : '无');
+          
+            if (json.data && typeof json.data === 'string') {
+              const audioBuffer = Buffer.from(json.data, 'base64');
+              console.log('[TTS] 解码后音频大小:', audioBuffer.length);
+              res.writeHead(200, {
+                'Content-Type': 'audio/mpeg',
+                'Content-Length': audioBuffer.length,
+                'Accept-Ranges': 'bytes'
+              });
+              res.write(audioBuffer);
+              res.end();
+            } else if (json.code !== 3000) {
+              console.error('[TTS] 错误:', json.message);
+              res.status(500).json({ error: json.message || 'TTS错误' });
+            } else {
+              console.error('[TTS] 无效响应格式');
+              res.status(500).json({ error: '无效的响应格式' });
+            }
+        } catch (e) {
+          console.error('[TTS] 解析失败:', buffer.toString('utf8').substring(0, 500));
+          res.status(500).send('解析失败');
+        }
+      });
+      res2.on('error', (err) => {
+        console.error('[TTS] 火山引擎响应错误:', err);
+        res.end();
+      });
+    });
+    
+    req2.on('error', (err) => {
+      console.error('[TTS] 请求错误:', err);
+      res.status(500).send(String(err));
+    });
+    
+    req2.write(postData);
+    req2.end();
+    
+  } else {
+    res.status(400).send('不支持的 TTS 提供商');
+  }
+});
+
 app.get('/', (_req, res) => res.send(HTML));
+
+console.log('Registering API routes...');
 
 app.get('/api/status', (_req, res) => res.json({ running: isRunning }));
 
@@ -487,7 +903,7 @@ app.post('/api/start', async (_req, res) => {
     return res.json({ success: true });
   }
   try {
-    const webConfig = loadConfig(configPath);
+    webConfig = loadConfig(configPath);
     const migptConfig = buildMiGPTConfig(webConfig);
     
     console.log = (...args: any[]) => {
