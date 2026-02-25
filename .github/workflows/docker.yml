@@ -15,6 +15,8 @@ jobs:
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
       
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -22,16 +24,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: zhuzhu88920/migpt-ultimate
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=""
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
       
       - name: Build and push
         uses: docker/build-push-action@v5
@@ -39,5 +39,11 @@ jobs:
           context: .
           file: ./Dockerfile.web
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            zhuzhu88920/migpt-ultimate:latest
+            zhuzhu88920/migpt-ultimate:${{ github.sha }}
+            ${{ steps.version.outputs.VERSION != '' && format('zhuzhu88920/migpt-ultimate:{0}', steps.version.outputs.VERSION) || '' }}
+          labels: |
+            org.opencontainers.image.title=migpt-ultimate
+            org.opencontainers.image.description=小爱音箱终极解决方案
