@@ -26,7 +26,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: your-dockerhub-username/migpt-ultimate
+          images: zhuzhu88920/migpt-ultimate
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -40,4 +40,4 @@ jobs:
           file: ./Dockerfile.web
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ meta.outputs.labels }}
+          labels: ${{ steps.meta.outputs.labels }}
