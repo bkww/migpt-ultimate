@@ -3,3 +3,5 @@ lib/
 *.log
 .DS_Store
 config/
+apps/web/dist/
+apps/web/.mi.json
