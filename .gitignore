@@ -5,3 +5,4 @@ lib/
 config/
 apps/web/dist/
 apps/web/.mi.json
+*.tsbuildinfo
