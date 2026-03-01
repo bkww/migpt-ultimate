@@ -18,6 +18,8 @@ services:
       - ./config:/app/config
     environment:
       - NODE_ENV=production
+      - AUTH_USERNAME=your_username
+      - AUTH_PASSWORD=your_password
     restart: unless-stopped
 ```
 
@@ -25,11 +27,23 @@ services:
 docker-compose up -d
 ```
 
-然后访问 **http://localhost:36592** 在 Web 界面上配置你的小米账号和 API Key 即可。
+然后访问 **http://localhost:36592** 输入账号密码登录后，在 Web 界面上配置你的小米账号和 API Key 即可。
+
+## 登录认证
+
+部署后首次访问需要登录，默认账号：
+
+| 变量名 | 默认值 | 说明 |
+|--------|--------|------|
+| `AUTH_USERNAME` | admin | 登录用户名 |
+| `AUTH_PASSWORD` | password | 登录密码 |
+
+建议在部署时通过环境变量修改默认账号密码，确保安全。
 
 ## 功能特性
 
 - **Web 管理界面**：浏览器直接配置和控制，实时显示对话日志
+- **登录认证**：单用户账号密码保护，支持环境变量配置
 - **实时日志**：右侧面板显示用户提问和 AI 回答，无需查看后台日志
 - **插件系统**：支持自定义插件扩展，可根据关键词触发特定功能
 - **记忆系统**：内置对话记忆功能，AI 可记住之前的对话内容

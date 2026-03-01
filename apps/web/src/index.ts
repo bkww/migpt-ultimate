@@ -8,12 +8,22 @@ import YAML from 'yaml';
 import { Readable } from 'node:stream';
 import { nanoid } from 'nanoid';
 import https from 'https';
+import crypto from 'crypto';
+import cookieSession from 'cookie-session';
 
 console.log('Starting MiGPT Ultimate...');
 
 const DEFAULT_PORT = 36592;
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 const CONFIG_DIR = join(ROOT_DIR, 'config');
+
+const AUTH_USERNAME = process.env.AUTH_USERNAME || 'admin';
+const AUTH_PASSWORD = process.env.AUTH_PASSWORD || 'password';
+const AUTH_SECRET = process.env.AUTH_SECRET || nanoid(32);
+
+function hashPassword(password: string): string {
+  return crypto.createHash('sha256').update(password + AUTH_SECRET).digest('hex');
+}
 
 const kBanner = `
   __  __ _    _  _____    _____ _____ ____   ___  ____  
@@ -23,7 +33,104 @@ const kBanner = `
  |_|  |_|_____|_|\\_\\_| \\_\\   |_|   |_| \\___/ \\___/|____/ 
                                                         
   Ultimate - 小爱音箱终极解决方案 v0.1.0
-`;
+ `;
+
+const LOGIN_HTML = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MiGPT Ultimate - 登录</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .bg-blobs { position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; z-index: 0; }
+    .bg-blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.6; animation: float 20s ease-in-out infinite; }
+    .bg-blob:nth-child(1) { width: 500px; height: 500px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); top: -150px; left: -100px; animation-delay: 0s; }
+    .bg-blob:nth-child(2) { width: 400px; height: 400px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); bottom: -100px; right: -50px; animation-delay: -5s; }
+    .bg-blob:nth-child(3) { width: 300px; height: 300px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); top: 50%; left: 50%; transform: translate(-50%, -50%); animation-delay: -10s; }
+    @keyframes float { 0%, 100% { transform: translate(0, 0) scale(1); } 25% { transform: translate(30px, -30px) scale(1.05); } 50% { transform: translate(-20px, 20px) scale(0.95); } 75% { transform: translate(20px, 30px) scale(1.02); } }
+    .login-container { position: relative; z-index: 1; width: 100%; max-width: 380px; padding: 20px; }
+    .login-card { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 28px; padding: 44px 36px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2); }
+    .login-header { text-align: center; margin-bottom: 36px; }
+    .login-icon { width: 72px; height: 72px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4); }
+    .login-icon svg { width: 36px; height: 36px; fill: white; }
+    .login-title { color: white; font-size: 24px; font-weight: 600; margin-bottom: 6px; letter-spacing: -0.5px; }
+    .login-subtitle { color: rgba(255, 255, 255, 0.6); font-size: 14px; }
+    .form-group { margin-bottom: 20px; }
+    .form-label { display: block; color: rgba(255, 255, 255, 0.7); font-size: 13px; font-weight: 500; margin-bottom: 8px; letter-spacing: 0.3px; }
+    .form-input { width: 100%; padding: 16px 18px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; color: white; font-size: 15px; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); outline: none; }
+    .form-input::placeholder { color: rgba(255, 255, 255, 0.35); }
+    .form-input:focus { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.3); box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15); }
+    .btn-login { width: 100%; padding: 17px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 14px; color: white; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); margin-top: 8px; letter-spacing: 0.5px; box-shadow: 0 8px 24px rgba(102, 126, 234, 0.35); }
+    .btn-login:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(102, 126, 234, 0.45); }
+    .btn-login:active { transform: translateY(0); }
+    .btn-login:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .error-message { background: rgba(255, 59, 48, 0.15); border: 1px solid rgba(255, 59, 48, 0.3); color: #ff6b6b; padding: 12px 16px; border-radius: 12px; font-size: 13px; margin-bottom: 20px; text-align: center; display: none; animation: shake 0.4s ease; }
+    .error-message.show { display: block; }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+    .footer-hint { text-align: center; margin-top: 24px; color: rgba(255, 255, 255, 0.4); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="bg-blobs">
+    <div class="bg-blob"></div>
+    <div class="bg-blob"></div>
+    <div class="bg-blob"></div>
+  </div>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          </svg>
+        </div>
+        <h1 class="login-title">MiGPT Ultimate</h1>
+        <p class="login-subtitle">小爱音箱终极解决方案</p>
+      </div>
+      <div id="errorMsg" class="error-message"></div>
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label class="form-label">用户名</label>
+          <input type="text" class="form-input" id="username" placeholder="请输入用户名" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label class="form-label">密码</label>
+          <input type="password" class="form-input" id="password" placeholder="请输入密码" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn-login" id="loginBtn">登 录</button>
+      </form>
+      <div class="footer-hint">请使用管理员账号登录</div>
+    </div>
+  </div>
+  <script>
+    function showError(msg) { document.getElementById('errorMsg').textContent = msg; document.getElementById('errorMsg').classList.add('show'); }
+    function hideError() { document.getElementById('errorMsg').classList.remove('show'); }
+    async function handleLogin(e) {
+      e.preventDefault();
+      hideError();
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true; btn.textContent = '登录中...';
+      try {
+        const res = await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username: document.getElementById('username').value, password: document.getElementById('password').value}) });
+        const data = await res.json();
+        if (data.success) { window.location.href = '/'; }
+        else { showError(data.error || '登录失败'); btn.disabled = false; btn.textContent = '登 录'; }
+      } catch(err) { showError('网络错误，请稍后重试'); btn.disabled = false; btn.textContent = '登 录'; }
+    }
+  </script>
+</body>
+</html>`;
 
 const HTML = `<!DOCTYPE html>
 <html>
@@ -33,28 +140,37 @@ const HTML = `<!DOCTYPE html>
   <title>MiGPT Ultimate</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-    .page-header { text-align: center; color: white; margin-bottom: 20px; }
-    .page-header h1 { font-size: 28px; font-weight: 600; margin-bottom: 5px; }
-    .page-header p { opacity: 0.8; font-size: 14px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); min-height: 100vh; padding: 20px; }
+    .bg-blobs { position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; z-index: -1; }
+    .bg-blob { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.5; animation: float 25s ease-in-out infinite; }
+    .bg-blob:nth-child(1) { width: 600px; height: 600px; background: #667eea; top: -200px; left: -150px; animation-delay: 0s; }
+    .bg-blob:nth-child(2) { width: 500px; height: 500px; background: #764ba2; bottom: -150px; right: -100px; animation-delay: -8s; }
+    .bg-blob:nth-child(3) { width: 400px; height: 400px; background: #4facfe; top: 40%; left: 60%; animation-delay: -15s; }
+    @keyframes float { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(30px, -40px) scale(1.05); } 66% { transform: translate(-20px, 20px) scale(0.95); } }
+    .page-header { text-align: center; color: white; margin-bottom: 20px; position: relative; }
+    .page-header h1 { font-size: 28px; font-weight: 600; margin-bottom: 5px; letter-spacing: -0.5px; }
+    .page-header p { opacity: 0.7; font-size: 14px; }
+    .logout-btn { position: absolute; right: 0; top: 5px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 10px; font-size: 13px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(10px); }
+    .logout-btn:hover { background: rgba(255,255,255,0.25); transform: translateY(-1px); }
     .main-wrapper { display: flex; gap: 20px; justify-content: center; max-width: 1200px; margin: 0 auto; }
     .container { width: 480px; flex-shrink: 0; }
-    .log-panel { width: 400px; flex-shrink: 0; background: rgba(0,0,0,0.3); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; max-height: calc(100vh - 40px); }
+    .glass-card { background: rgba(255,255,255,0.08); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; padding: 20px; margin-bottom: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+    .log-panel { width: 400px; flex-shrink: 0; background: rgba(0,0,0,0.25); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; max-height: calc(100vh - 40px); }
     .log-header { color: white; font-size: 14px; font-weight: 600; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-    .log-clear { background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; }
-    .log-clear:hover { background: rgba(255,255,255,0.3); }
+    .log-clear { background: rgba(255,255,255,0.15); border: none; color: white; padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; backdrop-filter: blur(10px); }
+    .log-clear:hover { background: rgba(255,255,255,0.25); }
     .log-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
     .log-list::-webkit-scrollbar { width: 6px; }
     .log-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
-    .log-item { background: rgba(255,255,255,0.1); border-radius: 8px; padding: 10px 12px; color: white; font-size: 12px; line-height: 1.5; }
+    .log-item { background: rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 14px; color: white; font-size: 13px; line-height: 1.5; border: 1px solid rgba(255,255,255,0.05); }
     .log-item.user { border-left: 3px solid #f39c12; }
     .log-item.ai { border-left: 3px solid #27ae60; }
     .log-item.system { border-left: 3px solid #3498db; }
-    .log-time { color: rgba(255,255,255,0.5); font-size: 10px; margin-bottom: 4px; }
+    .log-time { color: rgba(255,255,255,0.5); font-size: 11px; margin-bottom: 4px; }
     .log-content { word-break: break-all; }
-    .log-empty { color: rgba(255,255,255,0.5); text-align: center; padding: 20px; font-size: 13px; }
-    .card { background: white; border-radius: 16px; padding: 20px; margin-bottom: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); }
-    .status-bar { display: flex; align-items: center; justify-content: space-between; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
+    .log-empty { color: rgba(255,255,255,0.4); text-align: center; padding: 20px; font-size: 13px; }
+    .card { background: rgba(255,255,255,0.1); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; padding: 20px; margin-bottom: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+    .status-bar { display: flex; align-items: center; justify-content: space-between; padding: 15px; border-radius: 14px; margin-bottom: 15px; backdrop-filter: blur(10px); }
     .status-bar.running { background: linear-gradient(135deg, #11998e, #38ef7d); }
     .status-bar.stopped { background: linear-gradient(135deg, #eb3349, #f45c43); }
     .status-indicator { display: flex; align-items: center; gap: 10px; color: white; font-weight: 600; }
@@ -68,26 +184,28 @@ const HTML = `<!DOCTYPE html>
     .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
     .form-section { margin-bottom: 15px; }
-    .form-label { display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .form-input { width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 10px; font-size: 14px; transition: border-color 0.2s; }
-    .form-input:focus { outline: none; border-color: #667eea; }
+    .form-label { display: block; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.7); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-input { width: 100%; padding: 12px; border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; font-size: 14px; transition: all 0.2s; background: rgba(255,255,255,0.08); color: white; }
+    .form-input:focus { outline: none; border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.12); }
+    .form-input::placeholder { color: rgba(255,255,255,0.4); }
+    .form-input option { background: #1a1a2e; color: white; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .form-hint { font-size: 11px; color: #999; margin-top: 4px; }
-    .form-link { color: #667eea; text-decoration: none; }
-    .form-link:hover { text-decoration: underline; }
+    .form-hint { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 4px; }
+    .form-hint a { color: #667eea; text-decoration: none; }
+    .form-hint a:hover { text-decoration: underline; }
     .actions { display: flex; gap: 10px; margin-top: 15px; }
     .btn-action { flex: 1; padding: 14px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
     .btn-save { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
-    .btn-load { background: #f5f5f5; color: #666; }
+    .btn-load { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); }
     .btn-scan { background: #ff6900; color: white; }
-    .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; border-radius: 10px; color: white; font-weight: 500; font-size: 14px; opacity: 0; transition: opacity 0.3s; z-index: 1000; }
+    .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; border-radius: 12px; color: white; font-weight: 500; font-size: 14px; opacity: 0; transition: opacity 0.3s; z-index: 1000; backdrop-filter: blur(10px); }
     .toast.show { opacity: 1; }
-    .toast.success { background: linear-gradient(135deg, #11998e, #38ef7d); }
-    .toast.error { background: linear-gradient(135deg, #eb3349, #f45c43); }
-    .divider { height: 1px; background: #eee; margin: 15px 0; }
+    .toast.success { background: rgba(17, 153, 142, 0.9); }
+    .toast.error { background: rgba(235, 51, 73, 0.9); }
+    .divider { height: 1px; background: rgba(255,255,255,0.15); margin: 15px 0; }
     textarea.form-input { resize: none; height: 60px; font-family: monospace; font-size: 12px; }
     .collapse-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 10px 0; }
-    .collapse-header h4 { font-size: 13px; color: #888; font-weight: 500; }
+    .collapse-header h4 { font-size: 13px; color: rgba(255,255,255,0.5); font-weight: 500; }
     .collapse-arrow { transition: transform 0.2s; }
     .collapse-content { max-height: 0; overflow: hidden; transition: max-height 0.3s; }
     .collapse-content.open { max-height: 200px; }
@@ -110,9 +228,15 @@ const HTML = `<!DOCTYPE html>
   </style>
 </head>
 <body>
+  <div class="bg-blobs">
+    <div class="bg-blob"></div>
+    <div class="bg-blob"></div>
+    <div class="bg-blob"></div>
+  </div>
   <div class="page-header">
     <h1>MiGPT Ultimate</h1>
     <p>小爱音箱终极解决方案</p>
+    <button class="logout-btn" onclick="logout()">退出登录</button>
   </div>
   <div class="main-wrapper">
     <div class="container">
@@ -476,6 +600,10 @@ const HTML = `<!DOCTYPE html>
     function openMiLogin() {
       window.open('https://account.mi.com/', '_blank');
     }
+    async function logout() {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/';
+    }
     loadConfig();
     onAiProviderChange();
     updateStatus();
@@ -625,6 +753,12 @@ process.on('unhandledRejection', (reason) => {
 
 const app = express();
 app.use(express.json());
+app.use(cookieSession({
+  name: 'session',
+  keys: [AUTH_SECRET],
+  maxAge: 24 * 60 * 60 * 1000 * 7,
+  httpOnly: true,
+}));
 
 let webConfig: WebConfig | undefined;
 const ttsSecret = nanoid();
@@ -867,9 +1001,36 @@ app.get(ttsPath, (req, res) => {
   }
 });
 
-app.get('/', (_req, res) => res.send(HTML));
+app.get('/', (req, res) => {
+  const sessionAuth = (req.session as any)?.auth;
+  const cookieAuth = req.cookies?.auth;
+  const expectedHash = hashPassword(AUTH_USERNAME + AUTH_PASSWORD);
+  const isLoggedIn = sessionAuth === expectedHash || cookieAuth === expectedHash;
+  if (!isLoggedIn) {
+    return res.send(LOGIN_HTML);
+  }
+  res.send(HTML);
+});
 
 console.log('Registering API routes...');
+
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  if (username === AUTH_USERNAME && password === AUTH_PASSWORD) {
+    req.session = { auth: hashPassword(username + password) };
+    res.cookie('auth', hashPassword(username + password), { maxAge: 7 * 24 * 60 * 60 * 1000, httpOnly: true });
+    res.json({ success: true });
+  } else {
+    res.status(401).json({ success: false, error: '用户名或密码错误' });
+  }
+});
+
+app.post('/api/logout', (req, res) => {
+  req.session = null;
+  res.clearCookie('session');
+  res.clearCookie('auth');
+  res.json({ success: true });
+});
 
 app.get('/api/status', (_req, res) => res.json({ running: isRunning }));
 

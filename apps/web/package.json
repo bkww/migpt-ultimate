@@ -14,11 +14,13 @@
     "@mi-gpt/chat": "^1.1.1",
     "express": "^4.21.0",
     "nanoid": "^5.0.0",
-    "yaml": "^2.7.0"
+    "yaml": "^2.7.0",
+    "cookie-session": "^2.1.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.15.3",
+    "@types/cookie-session": "^2.0.48",
     "typescript": "^5.8.2"
   }
 }
