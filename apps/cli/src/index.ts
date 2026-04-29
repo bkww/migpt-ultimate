@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { MiGPTUltimate } from '../lib/index.js';
+import { MiGPTUltimate } from '@migpt-ultimate/core';
 import { readFileSync } from 'node:fs';
 import YAML from 'yaml';
 

@@ -1,8 +1,13 @@
 node_modules/
+dist/
 lib/
 *.log
 .DS_Store
 config/
-apps/web/dist/
 apps/web/.mi.json
 *.tsbuildinfo
+pnpm-lock.yaml
+packages/core/src/*.d.ts
+packages/core/src/*.d.ts.map
+packages/core/src/*.js
+packages/core/src/*.js.map

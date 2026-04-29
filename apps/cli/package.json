@@ -12,7 +12,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@migpt-ultimate/core": "file:../../packages/core/migpt-ultimate-core-0.1.0.tgz",
+    "@migpt-ultimate/core": "workspace:*",
     "commander": "^12.1.0",
     "yaml": "^2.8.2"
   },
