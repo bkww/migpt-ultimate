@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@migpt-ultimate/core": "workspace:*",
+    "@mi-gpt/miot": "^1.2.2",
     "commander": "^12.1.0",
     "yaml": "^2.8.2"
   },
