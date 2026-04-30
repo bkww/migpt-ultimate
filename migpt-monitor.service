@@ -1,0 +1,15 @@
+[Unit]
+Description=MiGPT Ultimate Monitor - xiaoai switch control
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/home/pi/venvs/hermes/bin/python /home/pi/migpt-monitor.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+Environment=PATH=/home/pi/.nvm/versions/node/v24.15.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+[Install]
+WantedBy=default.target
