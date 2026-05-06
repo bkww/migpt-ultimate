@@ -47,7 +47,9 @@ docker-compose up -d
 - **实时日志**：右侧面板显示用户提问和 AI 回答，无需查看后台日志
 - **插件系统**：支持自定义插件扩展，可根据关键词触发特定功能
 - **记忆系统**：内置对话记忆功能，AI 可记住之前的对话内容
-- **CLI 命令行工具**：终端快速启动
+- **CLI 命令行工具**：终端快速启动与控制
+- **Speak 命令**：CLI 直接让小爱音箱 TTS 说话
+- **Loop-Speak 命令**：循环播报指定文字，支持指定次数或无限循环，随时停止
 - **TTS 支持**：可配置 TTS Command 解决部分机型无声音问题
 
 ## 本地开发
@@ -65,12 +67,43 @@ pnpm start
 
 ### 使用 CLI
 
+**启动服务**
+
 ```shell
 cd apps/cli
 pnpm install
 pnpm build
 migpt-ultimate start -c config.yaml
 ```
+
+**让小爱音箱说话**
+
+```shell
+migpt-ultimate speak -t "你好世界" -c config.yaml
+```
+
+**循环播报**
+
+```shell
+# 无限循环播报（直到手动停止）
+migpt-ultimate loop-speak start -t "请注意" -c config.yaml
+
+# 播报 3 次后自动停止
+migpt-ultimate loop-speak start -t "请注意" -n 3 -c config.yaml
+
+# MIoT 模式下指定播报间隔（默认5秒）
+migpt-ultimate loop-speak start -t "请注意" -i 10 -c config.yaml
+
+# 手动停止循环播报
+migpt-ultimate loop-speak stop -c config.yaml
+```
+
+| 参数 | 说明 |
+|------|------|
+| `-t, --text` | 播报文本（必选） |
+| `-n, --count` | 播报次数，0=无限循环（默认 0） |
+| `-i, --interval` | MIoT 模式播报间隔秒数（默认 5） |
+| `-c, --config` | 配置文件路径（默认 ./config.yaml） |
 
 ## 配置说明
 
