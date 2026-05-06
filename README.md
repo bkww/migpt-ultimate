@@ -70,6 +70,10 @@ pnpm start
 **启动服务**
 
 ```shell
+cd packages/core
+pnpm install
+pnpm build
+
 cd apps/cli
 pnpm install
 pnpm build
