@@ -50,6 +50,7 @@ docker-compose up -d
 - **CLI 命令行工具**：终端快速启动与控制
 - **Speak 命令**：CLI 直接让小爱音箱 TTS 说话
 - **Loop-Speak 命令**：循环播报指定文字，支持指定次数或无限循环，随时停止
+- **Volume 命令**：CLI 控制小爱音箱音量（查询、设置、上调、下调）
 - **TTS 支持**：可配置 TTS Command 解决部分机型无声音问题
 
 ## 本地开发
@@ -107,6 +108,28 @@ migpt-ultimate loop-speak stop -c config.yaml
 | `-t, --text` | 播报文本（必选） |
 | `-n, --count` | 播报次数，0=无限循环（默认 0） |
 | `-i, --interval` | MIoT 模式播报间隔秒数（默认 5） |
+| `-c, --config` | 配置文件路径（默认 ./config.yaml） |
+
+**音量控制**
+
+```shell
+# 查询当前音量
+migpt-ultimate volume get -c config.yaml
+
+# 设置音量（6-100）
+migpt-ultimate volume set -v 50 -c config.yaml
+
+# 音量上调（默认+10）
+migpt-ultimate volume up -c config.yaml
+
+# 音量下调 20
+migpt-ultimate volume down -s 20 -c config.yaml
+```
+
+| 参数 | 说明 |
+|------|------|
+| `-v, --value` | 目标音量值（6-100，set 命令必选） |
+| `-s, --step` | 调整幅度（up/down 默认 10） |
 | `-c, --config` | 配置文件路径（默认 ./config.yaml） |
 
 ## 配置说明
