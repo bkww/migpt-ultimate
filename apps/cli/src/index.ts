@@ -179,6 +179,178 @@ loopSpeakCmd
     console.log('✅ 循环播报已停止');
   });
 
+// === volume 命令组 ===
+const volumeCmd = program
+  .command('volume')
+  .description('控制小爱音箱音量');
+
+volumeCmd
+  .command('get')
+  .description('查询当前音量')
+  .option('-c, --config <path>', '配置文件路径', './config.yaml')
+  .action(async (options) => {
+    try {
+      const configContent = readFileSync(options.config, 'utf-8');
+      const config = YAML.parse(configContent);
+
+      if (!config.speaker) {
+        console.error('❌ 配置文件中缺少 speaker 配置');
+        process.exit(1);
+      }
+
+      const mina = await getMiNA(config.speaker);
+      if (!mina) {
+        console.error('❌ 无法连接到小爱音箱');
+        process.exit(1);
+      }
+
+      const vol = await mina.getVolume();
+      if (vol === undefined) {
+        console.error('❌ 获取音量失败');
+        process.exit(1);
+      }
+
+      console.log(`🔊 当前音量: ${vol}`);
+    } catch (error) {
+      console.error('❌ 获取音量失败:', error);
+      process.exit(1);
+    }
+  });
+
+volumeCmd
+  .command('set')
+  .description('设置音量 (6-100)')
+  .requiredOption('-v, --value <volume>', '目标音量值')
+  .option('-c, --config <path>', '配置文件路径', './config.yaml')
+  .action(async (options) => {
+    try {
+      const value = parseInt(options.value);
+      if (isNaN(value) || value < 6 || value > 100) {
+        console.error('❌ 音量值必须在 6-100 之间');
+        process.exit(1);
+      }
+
+      const configContent = readFileSync(options.config, 'utf-8');
+      const config = YAML.parse(configContent);
+
+      if (!config.speaker) {
+        console.error('❌ 配置文件中缺少 speaker 配置');
+        process.exit(1);
+      }
+
+      const mina = await getMiNA(config.speaker);
+      if (!mina) {
+        console.error('❌ 无法连接到小爱音箱');
+        process.exit(1);
+      }
+
+      const ok = await mina.setVolume(value);
+      if (!ok) {
+        console.error('❌ 设置音量失败');
+        process.exit(1);
+      }
+
+      console.log(`🔊 音量已设置为: ${value}`);
+    } catch (error) {
+      console.error('❌ 设置音量失败:', error);
+      process.exit(1);
+    }
+  });
+
+volumeCmd
+  .command('up')
+  .description('音量上调')
+  .option('-s, --step <step>', '上调幅度', '10')
+  .option('-c, --config <path>', '配置文件路径', './config.yaml')
+  .action(async (options) => {
+    try {
+      const step = parseInt(options.step);
+      if (isNaN(step) || step < 1) {
+        console.error('❌ 上调幅度必须为正整数');
+        process.exit(1);
+      }
+
+      const configContent = readFileSync(options.config, 'utf-8');
+      const config = YAML.parse(configContent);
+
+      if (!config.speaker) {
+        console.error('❌ 配置文件中缺少 speaker 配置');
+        process.exit(1);
+      }
+
+      const mina = await getMiNA(config.speaker);
+      if (!mina) {
+        console.error('❌ 无法连接到小爱音箱');
+        process.exit(1);
+      }
+
+      const current = await mina.getVolume();
+      if (current === undefined) {
+        console.error('❌ 获取音量失败');
+        process.exit(1);
+      }
+
+      const target = Math.min(current + step, 100);
+      const ok = await mina.setVolume(target);
+      if (!ok) {
+        console.error('❌ 设置音量失败');
+        process.exit(1);
+      }
+
+      console.log(`🔊 音量: ${current} → ${target}`);
+    } catch (error) {
+      console.error('❌ 调整音量失败:', error);
+      process.exit(1);
+    }
+  });
+
+volumeCmd
+  .command('down')
+  .description('音量下调')
+  .option('-s, --step <step>', '下调幅度', '10')
+  .option('-c, --config <path>', '配置文件路径', './config.yaml')
+  .action(async (options) => {
+    try {
+      const step = parseInt(options.step);
+      if (isNaN(step) || step < 1) {
+        console.error('❌ 下调幅度必须为正整数');
+        process.exit(1);
+      }
+
+      const configContent = readFileSync(options.config, 'utf-8');
+      const config = YAML.parse(configContent);
+
+      if (!config.speaker) {
+        console.error('❌ 配置文件中缺少 speaker 配置');
+        process.exit(1);
+      }
+
+      const mina = await getMiNA(config.speaker);
+      if (!mina) {
+        console.error('❌ 无法连接到小爱音箱');
+        process.exit(1);
+      }
+
+      const current = await mina.getVolume();
+      if (current === undefined) {
+        console.error('❌ 获取音量失败');
+        process.exit(1);
+      }
+
+      const target = Math.max(current - step, 6);
+      const ok = await mina.setVolume(target);
+      if (!ok) {
+        console.error('❌ 设置音量失败');
+        process.exit(1);
+      }
+
+      console.log(`🔊 音量: ${current} → ${target}`);
+    } catch (error) {
+      console.error('❌ 调整音量失败:', error);
+      process.exit(1);
+    }
+  });
+
 // === 内部命令：后台循环播报的实际执行逻辑 ===
 program
   .command('_loop-speak-run')
