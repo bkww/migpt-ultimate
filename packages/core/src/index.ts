@@ -155,6 +155,7 @@ export class MiGPTUltimate {
   private memory: MemorySystem | null = null;
   private config: UltimateConfig | null = null;
   private isRunning = false;
+  private processedMsgs: Set<string> = new Set();
 
   constructor() {
     console.log = filteredLog;
@@ -190,6 +191,17 @@ export class MiGPTUltimate {
     const finalConfig: MiGPTConfig = {
       ...config,
       onMessage: async (engine, msg) => {
+        // 消息去重：跳过已处理过的消息
+        if (this.processedMsgs.has(msg.id)) {
+          return undefined;
+        }
+        this.processedMsgs.add(msg.id);
+        // 只保留最近 100 条已处理消息 ID，避免内存无限增长
+        if (this.processedMsgs.size > 100) {
+          const first = this.processedMsgs.values().next().value;
+          if (first !== undefined) this.processedMsgs.delete(first);
+        }
+
         // 打断小爱当前正在说的任何语音
         if (engine.MiNA) {
           await engine.MiNA.stop();
