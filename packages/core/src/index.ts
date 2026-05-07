@@ -190,27 +190,30 @@ export class MiGPTUltimate {
     const finalConfig: MiGPTConfig = {
       ...config,
       onMessage: async (engine, msg) => {
+        // 打断小爱当前正在说的任何语音
+        if (engine.MiNA) {
+          await engine.MiNA.stop();
+        }
+
         if (!keywords.some((e) => msg.text.startsWith(e))) {
           return undefined;
         }
-        
+
         try {
-          await engine.speaker.abortXiaoAI();
-          
           const text = await ChatBot.chat(msg);
-          
+
           if (!text) {
             return undefined;
           }
-          
+
           console.log(`🔊 ${text}`);
-          
+
           if (ttsCommand) {
             await engine.MiOT.doAction(ttsCommand[0], ttsCommand[1], text);
           } else {
             await engine.speaker.play({ text });
           }
-          
+
           return { handled: true };
         } catch (e) {
           console.error('AI 回复错误:', e);
@@ -222,7 +225,7 @@ export class MiGPTUltimate {
     suppressActive = true;
     MiGPT.start(finalConfig);
     console.log('✅ 服务已启动');
-    console.log('📢 提示: 不刷机无法打断小爱回复，AI语音可能会与小爱声音重叠');
+    console.log('📢 已启用自动打断小爱回复，小爱语音将被立即停止');
     console.log('📢 若无声音，请在高级选项填写正确的 TTS Command (如 5,1)');
   }
 
