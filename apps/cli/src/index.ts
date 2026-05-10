@@ -84,6 +84,46 @@ program
     }
   });
 
+program
+  .command('play-url')
+  .description('播放网络音频 URL')
+  .requiredOption('-u, --url <url>', '音频文件 HTTP/HTTPS URL')
+  .option('-c, --config <path>', '配置文件路径', './config.yaml')
+  .action(async (options) => {
+    try {
+      const configContent = readFileSync(options.config, 'utf-8');
+      const config = YAML.parse(configContent);
+
+      if (!config.speaker) {
+        console.error('❌ 配置文件中缺少 speaker 配置');
+        process.exit(1);
+      }
+
+      if (config.ttsCommand) {
+        const miot = await getMIoT(config.speaker);
+        if (!miot) {
+          console.error('❌ 无法连接到小爱音箱');
+          process.exit(1);
+        }
+        // MIoT mode does not support URL playback, fall back to MiNA
+        console.error('❌ MIoT ttsCommand 模式不支持 URL 播放，请使用 MiNA 模式');
+        process.exit(1);
+      }
+
+      const mina = await getMiNA(config.speaker);
+      if (!mina) {
+        console.error('❌ 无法连接到小爱音箱');
+        process.exit(1);
+      }
+      await mina.play({ url: options.url });
+
+      console.log('✅ 已发送播放 URL 请求');
+    } catch (error) {
+      console.error('❌ 播放 URL 失败:', error);
+      process.exit(1);
+    }
+  });
+
 // === loop-speak 命令组 ===
 const loopSpeakCmd = program
   .command('loop-speak')
