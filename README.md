@@ -50,6 +50,7 @@ docker-compose up -d
 - **CLI 命令行工具**：终端快速启动与控制
 - **自动打断小爱回复**：服务启动后自动打断小爱自身语音，AI 完全接管对话
 - **Speak 命令**：CLI 直接让小爱音箱 TTS 说话
+- **Play-URL 命令**：CLI 让小爱音箱播放网络音频 HTTP/HTTPS URL
 - **Loop-Speak 命令**：循环播报指定文字，支持指定次数或无限循环，随时停止
 - **Volume 命令**：CLI 控制小爱音箱音量（查询、设置、上调、下调）
 - **TTS 支持**：可配置 TTS Command 解决部分机型无声音问题
@@ -111,9 +112,21 @@ migpt-ultimate loop-speak stop -c config.yaml
 | `-i, --interval` | MIoT 模式播报间隔秒数（默认 5） |
 | `-c, --config` | 配置文件路径（默认 ./config.yaml） |
 
-**音量控制**
+**播放网络音频 URL**
 
 ```shell
+# 播放网络音频
+migpt-ultimate play-url -u "http://example.com/audio.mp3" -c config.yaml
+```
+
+| 参数 | 说明 |
+|------|------|
+| `-u, --url` | 音频文件 HTTP/HTTPS URL（必选） |
+| `-c, --config` | 配置文件路径（默认 ./config.yaml） |
+
+> 注意：play-url 命令仅支持 MiNA 模式，不支持 MIoT ttsCommand 模式。小爱音箱的 `player_play_url` 只接受 HTTP/HTTPS URL，不支持本地文件路径。如需播放本地音频，请在局域网内启动 HTTP 服务（如 Python `http.server`）将音频文件映射为 URL。
+
+## 配置说明
 # 查询当前音量
 migpt-ultimate volume get -c config.yaml
 
